@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: metabase
+      POSTGRES_USER: metabase
+      POSTGRES_PASSWORD: metabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - metabase-postgres-data:/var/lib/postgresql/data
+  redis:
+    image: redis:8
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  metabase-postgres-data:
