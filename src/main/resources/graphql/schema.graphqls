@@ -1,0 +1,22 @@
+scalar Date
+
+type Query {
+  movies: [Movie!]!
+  movie(id: ID!): Movie
+}
+
+type Movie {
+  id: ID!
+  title: String!
+  overview: String
+  releaseDate: Date
+  runtimeMinutes: Int
+  cast: [CastMember!]!
+}
+
+type CastMember {
+  personId: ID!
+  name: String!
+  character: String
+  order: Int
+}
