@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.Movie;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.BatchMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -35,4 +37,3 @@ public class MovieController {
                 movie -> castByMovie.getOrDefault(movie.id(), List.of())));
     }
 }
-

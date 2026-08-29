@@ -1,4 +1,4 @@
-package me.lewisblackburn.metabase.movie;
+package me.lewisblackburn.metabase.movie.model;
 
 public record CastMember(
         Long personId,
@@ -6,4 +6,3 @@ public record CastMember(
         String character,
         Integer order) {
 }
-

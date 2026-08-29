@@ -9,6 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.Movie;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,4 +92,3 @@ class MovieRepositoryIntegrationTest {
         return org.assertj.core.groups.Tuple.tuple(first, second);
     }
 }
-

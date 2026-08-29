@@ -6,6 +6,8 @@ import static org.mockito.BDDMockito.given;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.Movie;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -62,4 +64,3 @@ class MovieControllerTest {
         assertThat(result).containsEntry(MOVIE, List.of());
     }
 }
-

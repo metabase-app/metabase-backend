@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.Movie;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
@@ -78,4 +80,3 @@ public class MovieRepository {
                                 Collectors.toList())));
     }
 }
-

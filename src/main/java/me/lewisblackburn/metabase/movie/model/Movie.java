@@ -1,4 +1,4 @@
-package me.lewisblackburn.metabase.movie;
+package me.lewisblackburn.metabase.movie.model;
 
 import java.time.LocalDate;
 
@@ -9,4 +9,3 @@ public record Movie(
         LocalDate releaseDate,
         Integer runtimeMinutes) {
 }
-
