@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 @WebMvcTest(HealthController.class)
 class HealthControllerTest {
@@ -17,9 +18,14 @@ class HealthControllerTest {
 
     @Test
     void returnsOk() throws Exception {
-        mockMvc.perform(get("/health"))
-                .andExpect(status().isOk())
+        // Given the health endpoint is available.
+        String endpoint = "/health";
+
+        // When a client requests the health endpoint.
+        ResultActions response = mockMvc.perform(get(endpoint));
+
+        // Then the endpoint reports a successful response.
+        response.andExpect(status().isOk())
                 .andExpect(content().string("OK"));
     }
 }
-

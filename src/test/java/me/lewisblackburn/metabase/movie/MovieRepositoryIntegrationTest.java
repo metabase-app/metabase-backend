@@ -51,6 +51,7 @@ class MovieRepositoryIntegrationTest {
 
     @Test
     void findsMoviesAndTheirCast() {
+        // Given a movie and an acting credit have been stored.
         Long movieId = insertEntity("MOVIE", "The Matrix");
         dsl.insertInto(MOVIES)
                 .set(MOVIES.ENTITY_ID, movieId)
@@ -69,10 +70,12 @@ class MovieRepositoryIntegrationTest {
                 .set(CREDITS.CREDIT_ORDER, 0)
                 .execute();
 
+        // When movies and cast are loaded from the repository.
         List<Movie> movies = movieRepository.findAll();
         Movie movie = movieRepository.find(movieId);
         Map<Long, List<CastMember>> cast = movieRepository.findCastByMovieIds(List.of(movieId));
 
+        // Then the repository returns the movie and its credited cast member.
         assertThat(movies).extracting(Movie::title).containsExactly("The Matrix");
         assertThat(movie.releaseDate()).isEqualTo(LocalDate.of(1999, 3, 31));
         assertThat(cast.get(movieId))

@@ -27,16 +27,20 @@ class MovieGraphQlTest {
 
     @Test
     void returnsMovieWithCast() {
+        // Given the repository contains a movie and its cast.
         Movie movie = new Movie(
                 1L, "The Matrix", "A computer hacker discovers the truth.", LocalDate.of(1999, 3, 31), 136);
         CastMember castMember = new CastMember(2L, "Keanu Reeves", "Neo", 0);
         given(movieRepository.find(1L)).willReturn(movie);
         given(movieRepository.findCastByMovieIds(List.of(1L))).willReturn(Map.of(1L, List.of(castMember)));
 
-        graphQlTester.documentName("movie")
+        // When the movie GraphQL query is executed.
+        GraphQlTester.Response response = graphQlTester.documentName("movie")
                 .variable("id", "1")
-                .execute()
-                .path("movie.title").entity(String.class).isEqualTo("The Matrix")
+                .execute();
+
+        // Then the response contains the movie and its cast details.
+        response.path("movie.title").entity(String.class).isEqualTo("The Matrix")
                 .path("movie.releaseDate").entity(String.class).isEqualTo("1999-03-31")
                 .path("movie.cast[0].name").entity(String.class).isEqualTo("Keanu Reeves")
                 .path("movie.cast[0].character").entity(String.class).isEqualTo("Neo");

@@ -28,39 +28,51 @@ class MovieControllerTest {
 
     @Test
     void returnsMoviesFromRepository() {
+        // Given the repository returns a movie.
         given(movieRepository.findAll()).willReturn(List.of(MOVIE));
 
+        // When all movies are requested from the controller.
         List<Movie> result = controller.movies();
 
+        // Then the controller returns the repository result.
         assertThat(result).containsExactly(MOVIE);
     }
 
     @Test
     void returnsMovieById() {
+        // Given the repository contains a movie with the requested ID.
         given(movieRepository.find(MOVIE.id())).willReturn(MOVIE);
 
+        // When that movie is requested from the controller.
         Movie result = controller.movie(MOVIE.id());
 
+        // Then the controller returns the matching movie.
         assertThat(result).isSameAs(MOVIE);
     }
 
     @Test
     void mapsMovieCast() {
+        // Given the repository returns a cast member for the movie.
         CastMember keanu = new CastMember(2L, "Keanu Reeves", "Neo", 0);
         given(movieRepository.findCastByMovieIds(List.of(MOVIE.id())))
                 .willReturn(Map.of(MOVIE.id(), List.of(keanu)));
 
+        // When the controller resolves the movie's cast.
         Map<Movie, List<CastMember>> result = controller.cast(List.of(MOVIE));
 
+        // Then the cast member is associated with that movie.
         assertThat(result).containsEntry(MOVIE, List.of(keanu));
     }
 
     @Test
     void mapsMissingCastToEmptyList() {
+        // Given the repository returns no cast for the movie.
         given(movieRepository.findCastByMovieIds(List.of(MOVIE.id()))).willReturn(Map.of());
 
+        // When the controller resolves the movie's cast.
         Map<Movie, List<CastMember>> result = controller.cast(List.of(MOVIE));
 
+        // Then the movie is associated with an empty cast list.
         assertThat(result).containsEntry(MOVIE, List.of());
     }
 }

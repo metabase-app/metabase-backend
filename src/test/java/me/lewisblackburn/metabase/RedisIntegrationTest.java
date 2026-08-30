@@ -33,10 +33,13 @@ class RedisIntegrationTest {
 
     @Test
     void redisWorks() {
+        // Given a value has been stored in Redis.
         redisTemplate.opsForValue().set("test", "hello");
 
+        // When the value is retrieved using the same key.
         String result = redisTemplate.opsForValue().get("test");
 
+        // Then Redis returns the stored value.
         assertThat(result).isEqualTo("hello");
     }
 }
