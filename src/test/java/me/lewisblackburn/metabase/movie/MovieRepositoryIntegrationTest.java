@@ -9,6 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import me.lewisblackburn.metabase.credit.CreditDepartment;
+import me.lewisblackburn.metabase.credit.CreditJob;
 import me.lewisblackburn.metabase.movie.model.CastMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
 import org.jooq.DSLContext;
@@ -64,8 +66,8 @@ class MovieRepositoryIntegrationTest {
         dsl.insertInto(CREDITS)
                 .set(CREDITS.CREDITED_ENTITY_ID, movieId)
                 .set(CREDITS.PERSON_ID, personId)
-                .set(CREDITS.DEPARTMENT, "Acting")
-                .set(CREDITS.JOB, "Actor")
+                .set(CREDITS.DEPARTMENT, CreditDepartment.ACTING.getDatabaseValue())
+                .set(CREDITS.JOB, CreditJob.ACTOR.getDatabaseValue())
                 .set(CREDITS.CHARACTER_NAME, "Neo")
                 .set(CREDITS.CREDIT_ORDER, 0)
                 .execute();

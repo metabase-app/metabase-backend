@@ -6,8 +6,9 @@ import static me.lewisblackburn.metabase.jooq.tables.Movies.MOVIES;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import me.lewisblackburn.metabase.credit.CreditDepartment;
+import me.lewisblackburn.metabase.credit.CreditJob;
 import me.lewisblackburn.metabase.movie.model.CastMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
 import org.jooq.DSLContext;
@@ -56,27 +57,26 @@ public class MovieRepository {
     }
 
     public Map<Long, List<CastMember>> findCastByMovieIds(List<Long> movieIds) {
+        var person = ENTITIES.as("person");
+
         return dsl.select(
                         CREDITS.CREDITED_ENTITY_ID,
                         CREDITS.PERSON_ID,
-                        ENTITIES.DISPLAY_NAME,
+                        person.DISPLAY_NAME,
                         CREDITS.CHARACTER_NAME,
                         CREDITS.CREDIT_ORDER)
                 .from(CREDITS)
-                .join(ENTITIES).on(ENTITIES.ID.eq(CREDITS.PERSON_ID))
+                .join(person).on(person.ID.eq(CREDITS.PERSON_ID))
                 .where(CREDITS.CREDITED_ENTITY_ID.in(movieIds))
-                .and(CREDITS.JOB.eq("Actor"))
+                .and(CREDITS.DEPARTMENT.eq(CreditDepartment.ACTING.getDatabaseValue()))
+                .and(CREDITS.JOB.eq(CreditJob.ACTOR.getDatabaseValue()))
                 .orderBy(CREDITS.CREDITED_ENTITY_ID, CREDITS.CREDIT_ORDER.asc().nullsLast())
-                .fetch()
-                .stream()
-                .collect(Collectors.groupingBy(
-                        record -> record.get(CREDITS.CREDITED_ENTITY_ID),
-                        Collectors.mapping(
-                                record -> new CastMember(
-                                        record.get(CREDITS.PERSON_ID),
-                                        record.get(ENTITIES.DISPLAY_NAME),
-                                        record.get(CREDITS.CHARACTER_NAME),
-                                        record.get(CREDITS.CREDIT_ORDER)),
-                                Collectors.toList())));
+                .fetchGroups(
+                        CREDITS.CREDITED_ENTITY_ID,
+                        record -> new CastMember(
+                                record.get(CREDITS.PERSON_ID),
+                                record.get(person.DISPLAY_NAME),
+                                record.get(CREDITS.CHARACTER_NAME),
+                                record.get(CREDITS.CREDIT_ORDER)));
     }
 }
