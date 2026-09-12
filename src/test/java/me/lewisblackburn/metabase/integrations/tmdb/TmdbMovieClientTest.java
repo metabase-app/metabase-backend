@@ -3,6 +3,7 @@ package me.lewisblackburn.metabase.integrations.tmdb;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static me.lewisblackburn.metabase.support.ClasspathFixtures.read;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -10,11 +11,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -52,7 +51,7 @@ class TmdbMovieClientTest {
     @Test
     void returnsDeserializedMovieDetails() throws IOException {
         // Given TMDB returns movie details with appended credits and external IDs.
-        expectMovieRequest().andRespond(withSuccess(readFixture("movie-603.json"), MediaType.APPLICATION_JSON));
+        expectMovieRequest().andRespond(withSuccess(read("tmdb/movie-603.json"), MediaType.APPLICATION_JSON));
 
         // When the movie is requested by its TMDB ID.
         var movie = movieClient.getMovie(603);
@@ -80,7 +79,7 @@ class TmdbMovieClientTest {
     @Test
     void acceptsMissingOptionalFieldsAndUnknownFields() throws IOException {
         // Given TMDB returns a sparse payload containing a future unknown field.
-        expectMovieRequest().andRespond(withSuccess(readFixture("movie-sparse.json"), MediaType.APPLICATION_JSON));
+        expectMovieRequest().andRespond(withSuccess(read("tmdb/movie-sparse.json"), MediaType.APPLICATION_JSON));
 
         // When the sparse movie response is requested.
         var movie = movieClient.getMovie(603);
@@ -126,7 +125,4 @@ class TmdbMovieClientTest {
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN));
     }
 
-    private String readFixture(String name) throws IOException {
-        return new ClassPathResource("tmdb/" + name).getContentAsString(StandardCharsets.UTF_8);
-    }
 }
