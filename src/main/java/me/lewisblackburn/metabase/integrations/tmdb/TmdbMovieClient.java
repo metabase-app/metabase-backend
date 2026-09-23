@@ -2,6 +2,7 @@ package me.lewisblackburn.metabase.integrations.tmdb;
 
 import lombok.RequiredArgsConstructor;
 import me.lewisblackburn.metabase.integrations.tmdb.dto.TmdbMovieDto;
+import me.lewisblackburn.metabase.movie.MovieClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -9,15 +10,16 @@ import org.springframework.web.client.RestClient;
 
 @Component
 @RequiredArgsConstructor
-public class TmdbMovieClient {
+public class TmdbMovieClient implements MovieClient<Long, TmdbMovieDto> {
 
     private static final String APPENDED_RESOURCES = "credits,external_ids";
 
     @Qualifier("tmdbRestClient")
     private final RestClient restClient;
 
-    public TmdbMovieDto getMovie(long id) {
-        Assert.isTrue(id > 0, "TMDB movie ID must be positive");
+    @Override
+    public TmdbMovieDto getMovie(Long id) {
+        Assert.isTrue(id != null && id > 0, "TMDB movie ID must be positive");
 
         return restClient
                 .get()
