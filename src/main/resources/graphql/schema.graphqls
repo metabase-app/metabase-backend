@@ -5,6 +5,14 @@ type Query {
   movie(id: ID!): Movie
 }
 
+enum MovieProvider {
+  TMDB
+}
+
+type Mutation {
+  importMovie(provider: MovieProvider!, externalId: ID!): Movie!
+}
+
 type Movie {
   id: ID!
   title: String!

@@ -1,0 +1,12 @@
+mutation ImportMovie($provider: MovieProvider!, $externalId: ID!) {
+  importMovie(provider: $provider, externalId: $externalId) {
+    id
+    title
+    overview
+    releaseDate
+    runtimeMinutes
+    cast {
+      name
+    }
+  }
+}
