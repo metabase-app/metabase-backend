@@ -25,7 +25,6 @@ class HealthControllerTest {
         ResultActions response = mockMvc.perform(get(endpoint));
 
         // Then the endpoint reports a successful response.
-        response.andExpect(status().isOk())
-                .andExpect(content().string("OK"));
+        response.andExpect(status().isOk()).andExpect(content().string("OK"));
     }
 }

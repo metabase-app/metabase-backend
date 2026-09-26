@@ -7,5 +7,6 @@ public record Movie(
         String title,
         String overview,
         LocalDate releaseDate,
-        Integer runtimeMinutes) {
+        Integer runtimeMinutes
+) {
 }

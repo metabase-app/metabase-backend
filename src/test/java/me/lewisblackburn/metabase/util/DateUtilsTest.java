@@ -15,9 +15,8 @@ class DateUtilsTest {
     @ValueSource(strings = {"1999-03-30", "2024-02-29"})
     void parsesValidDates(String value) {
         // Given the input contains a valid ISO date, including a leap day.
-        LocalDate expected = value.equals("1999-03-30")
-                ? LocalDate.of(1999, 3, 30)
-                : LocalDate.of(2024, 2, 29);
+        LocalDate expected =
+                value.equals("1999-03-30") ? LocalDate.of(1999, 3, 30) : LocalDate.of(2024, 2, 29);
 
         // When the date is parsed.
         LocalDate result = DateUtils.parseOptionalLocalDate(value);
@@ -40,11 +39,13 @@ class DateUtilsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"not-a-date", "30/03/1999", "2023-02-29", "2024-04-31", "1999-03-30T00:00:00", " 1999-03-30 "})
+    @ValueSource(strings = {"not-a-date", "30/03/1999", "2023-02-29", "2024-04-31",
+            "1999-03-30T00:00:00", " 1999-03-30 "})
     void rejectsMalformedDates(String value) {
         // Given the input contains a nonblank value that is not a valid ISO local date.
 
-        // When parsing is attempted, then the invalid value is rejected rather than treated as missing.
+        // When parsing is attempted, then the invalid value is rejected rather than treated as
+        // missing.
         assertThatThrownBy(() -> DateUtils.parseOptionalLocalDate(value))
                 .isInstanceOf(DateTimeParseException.class);
     }

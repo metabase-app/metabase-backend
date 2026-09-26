@@ -8,5 +8,6 @@ public record MovieImportData(
         String originalTitle,
         String originalLanguageCode,
         LocalDate releaseDate,
-        Integer runtimeMinutes) {
+        Integer runtimeMinutes
+) {
 }

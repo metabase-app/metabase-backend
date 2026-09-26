@@ -16,9 +16,7 @@ public class TmdbMovieMapper implements MovieMapper<TmdbMovieDto> {
             throw new IllegalArgumentException("Movie title must not be blank");
         }
 
-        return new MovieImportData(
-                source.title(),
-                TextUtils.blankToNull(source.overview()),
+        return new MovieImportData(source.title(), TextUtils.blankToNull(source.overview()),
                 TextUtils.blankToNull(source.originalTitle()),
                 TextUtils.blankToNull(source.originalLanguage()),
                 DateUtils.parseOptionalLocalDate(source.releaseDate()),

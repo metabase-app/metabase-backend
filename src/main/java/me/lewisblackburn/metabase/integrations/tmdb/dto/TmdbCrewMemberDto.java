@@ -17,4 +17,6 @@ public record TmdbCrewMemberDto(
         String profilePath,
         String creditId,
         String department,
-        String job) {}
+        String job
+) {
+}

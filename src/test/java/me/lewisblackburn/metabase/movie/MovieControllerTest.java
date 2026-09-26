@@ -17,8 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MovieControllerTest {
 
-    private static final Movie MOVIE = new Movie(
-            1L, "The Matrix", "A computer hacker discovers the truth.", LocalDate.of(1999, 3, 31), 136);
+    private static final Movie MOVIE = new Movie(1L, "The Matrix",
+            "A computer hacker discovers the truth.", LocalDate.of(1999, 3, 31), 136);
 
     @Mock
     private MovieRepository movieRepository;

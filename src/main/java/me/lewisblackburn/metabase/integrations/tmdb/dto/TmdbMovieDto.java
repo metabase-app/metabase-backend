@@ -35,11 +35,18 @@ public record TmdbMovieDto(
         Double voteAverage,
         Integer voteCount,
         TmdbCreditsDto credits,
-        ExternalIds externalIds) {
+        ExternalIds externalIds
+) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record BelongsToCollection(Long id, String name, String posterPath, String backdropPath) {}
+    public record BelongsToCollection(
+            Long id,
+            String name,
+            String posterPath,
+            String backdropPath
+    ) {
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -48,5 +55,7 @@ public record TmdbMovieDto(
             String wikidataId,
             String facebookId,
             String instagramId,
-            String twitterId) {}
+            String twitterId
+    ) {
+    }
 }

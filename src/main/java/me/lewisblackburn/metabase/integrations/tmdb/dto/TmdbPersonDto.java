@@ -22,4 +22,6 @@ public record TmdbPersonDto(
         String originalName,
         String placeOfBirth,
         Double popularity,
-        String profilePath) {}
+        String profilePath
+) {
+}

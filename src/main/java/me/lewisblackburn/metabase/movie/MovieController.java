@@ -29,11 +29,10 @@ public class MovieController {
 
     @BatchMapping(typeName = "Movie", field = "cast")
     public Map<Movie, List<CastMember>> cast(List<Movie> movies) {
-        Map<Long, List<CastMember>> castByMovie = movieRepository.findCastByMovieIds(
-                movies.stream().map(Movie::id).toList());
+        Map<Long, List<CastMember>> castByMovie =
+                movieRepository.findCastByMovieIds(movies.stream().map(Movie::id).toList());
 
-        return movies.stream().collect(Collectors.toMap(
-                movie -> movie,
+        return movies.stream().collect(Collectors.toMap(movie -> movie,
                 movie -> castByMovie.getOrDefault(movie.id(), List.of())));
     }
 }

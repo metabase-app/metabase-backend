@@ -18,4 +18,6 @@ public record TmdbCastMemberDto(
         Integer castId,
         String character,
         String creditId,
-        Integer order) {}
+        Integer order
+) {
+}

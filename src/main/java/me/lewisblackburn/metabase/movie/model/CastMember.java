@@ -4,5 +4,6 @@ public record CastMember(
         Long personId,
         String name,
         String character,
-        Integer order) {
+        Integer order
+) {
 }

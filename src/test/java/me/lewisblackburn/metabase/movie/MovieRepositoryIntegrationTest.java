@@ -34,9 +34,7 @@ class MovieRepositoryIntegrationTest {
     @Container
     @SuppressWarnings("resource")
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine")
-            .withDatabaseName("test")
-            .withUsername("test")
-            .withPassword("test");
+            .withDatabaseName("test").withUsername("test").withPassword("test");
 
     @DynamicPropertySource
     static void postgresProperties(DynamicPropertyRegistry registry) {
@@ -55,22 +53,17 @@ class MovieRepositoryIntegrationTest {
     void findsMoviesAndTheirCast() {
         // Given a movie and an acting credit have been stored.
         Long movieId = insertEntity("MOVIE", "The Matrix");
-        dsl.insertInto(MOVIES)
-                .set(MOVIES.ENTITY_ID, movieId)
+        dsl.insertInto(MOVIES).set(MOVIES.ENTITY_ID, movieId)
                 .set(MOVIES.RELEASE_DATE, LocalDate.of(1999, 3, 31))
-                .set(MOVIES.RUNTIME_MINUTES, 136)
-                .execute();
+                .set(MOVIES.RUNTIME_MINUTES, 136).execute();
 
         Long personId = insertEntity("PERSON", "Keanu Reeves");
         dsl.insertInto(PEOPLE).set(PEOPLE.ENTITY_ID, personId).execute();
-        dsl.insertInto(CREDITS)
-                .set(CREDITS.CREDITED_ENTITY_ID, movieId)
+        dsl.insertInto(CREDITS).set(CREDITS.CREDITED_ENTITY_ID, movieId)
                 .set(CREDITS.PERSON_ID, personId)
                 .set(CREDITS.DEPARTMENT, CreditDepartment.ACTING.getDatabaseValue())
                 .set(CREDITS.JOB, CreditJob.ACTOR.getDatabaseValue())
-                .set(CREDITS.CHARACTER_NAME, "Neo")
-                .set(CREDITS.CREDIT_ORDER, 0)
-                .execute();
+                .set(CREDITS.CHARACTER_NAME, "Neo").set(CREDITS.CREDIT_ORDER, 0).execute();
 
         // When movies and cast are loaded from the repository.
         List<Movie> movies = movieRepository.findAll();
@@ -80,17 +73,13 @@ class MovieRepositoryIntegrationTest {
         // Then the repository returns the movie and its credited cast member.
         assertThat(movies).extracting(Movie::title).containsExactly("The Matrix");
         assertThat(movie.releaseDate()).isEqualTo(LocalDate.of(1999, 3, 31));
-        assertThat(cast.get(movieId))
-                .extracting(CastMember::name, CastMember::character)
+        assertThat(cast.get(movieId)).extracting(CastMember::name, CastMember::character)
                 .containsExactly(assertThatTuple("Keanu Reeves", "Neo"));
     }
 
     private Long insertEntity(String type, String name) {
-        return dsl.insertInto(ENTITIES)
-                .set(ENTITIES.ENTITY_TYPE, type)
-                .set(ENTITIES.DISPLAY_NAME, name)
-                .returning(ENTITIES.ID)
-                .fetchOne(ENTITIES.ID);
+        return dsl.insertInto(ENTITIES).set(ENTITIES.ENTITY_TYPE, type)
+                .set(ENTITIES.DISPLAY_NAME, name).returning(ENTITIES.ID).fetchOne(ENTITIES.ID);
     }
 
     private org.assertj.core.groups.Tuple assertThatTuple(String first, String second) {

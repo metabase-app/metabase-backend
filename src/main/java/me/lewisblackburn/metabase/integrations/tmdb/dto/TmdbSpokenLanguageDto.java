@@ -8,4 +8,8 @@ import tools.jackson.databind.annotation.JsonNaming;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record TmdbSpokenLanguageDto(
-        String englishName, @JsonProperty("iso_639_1") String languageCode, String name) {}
+        String englishName,
+        @JsonProperty("iso_639_1") String languageCode,
+        String name
+) {
+}

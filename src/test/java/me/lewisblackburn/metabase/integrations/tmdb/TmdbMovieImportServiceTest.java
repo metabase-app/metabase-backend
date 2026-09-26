@@ -42,17 +42,22 @@ class TmdbMovieImportServiceTest {
 
     @Test
     void mapsAndSavesMovieWithProviderIdentity() throws IOException {
-        // Given TMDB supplies a movie and the repository returns its saved canonical representation.
-        given(client.getMovie(603L)).willReturn(jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class));
-        MovieImportData data = new MovieImportData("The Matrix", "A computer hacker discovers the truth.",
-                "The Matrix", "en", LocalDate.of(1999, 3, 30), 136);
-        Movie saved = new Movie(42L, data.title(), data.overview(), data.releaseDate(), data.runtimeMinutes());
+        // Given TMDB supplies a movie and the repository returns its saved canonical
+        // representation.
+        given(client.getMovie(603L))
+                .willReturn(jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class));
+        MovieImportData data =
+                new MovieImportData("The Matrix", "A computer hacker discovers the truth.",
+                        "The Matrix", "en", LocalDate.of(1999, 3, 30), 136);
+        Movie saved = new Movie(42L, data.title(), data.overview(), data.releaseDate(),
+                data.runtimeMinutes());
         given(repository.save("TMDB", "MOVIE", "603", data)).willReturn(saved);
 
         // When the provider movie is imported.
         Movie result = service().importMovie(603L);
 
-        // Then normalized data and provider identity reach persistence and the saved movie is returned.
+        // Then normalized data and provider identity reach persistence and the saved movie is
+        // returned.
         assertThat(result).isSameAs(saved);
         verify(repository).save("TMDB", "MOVIE", "603", data);
     }
@@ -70,7 +75,8 @@ class TmdbMovieImportServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"null", "{\"id\":604,\"title\":\"Wrong movie\"}", "{\"title\":\"Missing ID\"}"})
+    @ValueSource(strings = {"null", "{\"id\":604,\"title\":\"Wrong movie\"}",
+            "{\"title\":\"Missing ID\"}"})
     void rejectsUnexpectedProviderResponses(String payload) {
         // Given TMDB returns no movie or a movie without the requested identity.
         given(client.getMovie(603L)).willReturn(jsonMapper.readValue(payload, TmdbMovieDto.class));
@@ -95,8 +101,8 @@ class TmdbMovieImportServiceTest {
     @Test
     void doesNotSaveInvalidMovieData() {
         // Given the provider returns the expected identity but an invalid blank title.
-        given(client.getMovie(603L)).willReturn(jsonMapper.readValue(
-                "{\"id\":603,\"title\":\" \"}", TmdbMovieDto.class));
+        given(client.getMovie(603L)).willReturn(
+                jsonMapper.readValue("{\"id\":603,\"title\":\" \"}", TmdbMovieDto.class));
 
         // When mapping rejects the payload, then no data is saved.
         assertThatIllegalArgumentException().isThrownBy(() -> service().importMovie(603L))

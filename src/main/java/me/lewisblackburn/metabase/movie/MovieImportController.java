@@ -29,7 +29,8 @@ public class MovieImportController {
                 return id;
             }
         } catch (NumberFormatException ignored) {
-            log.warn("Rejected TMDB movie ID: expected an integer within the supported 64-bit range");
+            log.warn(
+                    "Rejected TMDB movie ID: expected an integer within the supported 64-bit range");
         }
         throw new IllegalArgumentException("TMDB movie ID must be a positive integer");
     }

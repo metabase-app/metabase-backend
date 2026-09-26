@@ -22,12 +22,10 @@ public class TmdbMovieImportService implements MovieImportService<Long> {
     public Movie importMovie(Long externalId) {
         Assert.isTrue(externalId != null && externalId > 0, "TMDB movie ID must be positive");
         TmdbMovieDto movie = client.getMovie(externalId);
-        Assert.state(movie != null && externalId.equals(movie.id()), "TMDB returned an unexpected movie");
+        Assert.state(movie != null && externalId.equals(movie.id()),
+                "TMDB returned an unexpected movie");
         MovieImportData data = mapper.map(movie);
-        return repository.save(
-                MovieProvider.TMDB.getDatabaseValue(),
-                TmdbEntityType.MOVIE.getDatabaseValue(),
-                externalId.toString(),
-                data);
+        return repository.save(MovieProvider.TMDB.getDatabaseValue(),
+                TmdbEntityType.MOVIE.getDatabaseValue(), externalId.toString(), data);
     }
 }

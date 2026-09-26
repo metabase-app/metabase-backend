@@ -15,16 +15,17 @@ import org.springframework.web.client.RestClientResponseException;
 public class GraphQlExceptionHandlerAdvice {
 
     @GraphQlExceptionHandler
-    public GraphQLError handleInvalidInput(IllegalArgumentException exception, DataFetchingEnvironment environment) {
-        log.warn("Invalid GraphQL input at path {}: {}", environment.getExecutionStepInfo().getPath(), exception.getMessage(), exception);
-        return GraphqlErrorBuilder.newError(environment)
-                .errorType(ErrorType.BAD_REQUEST)
-                .message(exception.getMessage())
-                .build();
+    public GraphQLError handleInvalidInput(IllegalArgumentException exception,
+            DataFetchingEnvironment environment) {
+        log.warn("Invalid GraphQL input at path {}: {}",
+                environment.getExecutionStepInfo().getPath(), exception.getMessage(), exception);
+        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.BAD_REQUEST)
+                .message(exception.getMessage()).build();
     }
 
     @GraphQlExceptionHandler
-    public GraphQLError handleExternalServiceFailure(RestClientException exception, DataFetchingEnvironment environment) {
+    public GraphQLError handleExternalServiceFailure(RestClientException exception,
+            DataFetchingEnvironment environment) {
         String detail = exception instanceof RestClientResponseException response
                 ? "HTTP status " + response.getStatusCode().value()
                 : exception.getClass().getSimpleName();
@@ -32,23 +33,19 @@ public class GraphQlExceptionHandlerAdvice {
                 environment.getExecutionStepInfo().getPath(), detail, exception);
         if (exception instanceof RestClientResponseException response
                 && response.getStatusCode().value() == 404) {
-            return GraphqlErrorBuilder.newError(environment)
-                    .errorType(ErrorType.NOT_FOUND)
-                    .message("The external service could not find the requested resource")
-                    .build();
+            return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.NOT_FOUND)
+                    .message("The external service could not find the requested resource").build();
         }
-        return GraphqlErrorBuilder.newError(environment)
-                .errorType(ErrorType.INTERNAL_ERROR)
-                .message("An external service request failed")
-                .build();
+        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.INTERNAL_ERROR)
+                .message("An external service request failed").build();
     }
 
     @GraphQlExceptionHandler
-    public GraphQLError handleUnexpectedFailure(Exception exception, DataFetchingEnvironment environment) {
-        log.error("Unhandled GraphQL exception at path {}", environment.getExecutionStepInfo().getPath(), exception);
-        return GraphqlErrorBuilder.newError(environment)
-                .errorType(ErrorType.INTERNAL_ERROR)
-                .message("An internal error occurred")
-                .build();
+    public GraphQLError handleUnexpectedFailure(Exception exception,
+            DataFetchingEnvironment environment) {
+        log.error("Unhandled GraphQL exception at path {}",
+                environment.getExecutionStepInfo().getPath(), exception);
+        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.INTERNAL_ERROR)
+                .message("An internal error occurred").build();
     }
 }

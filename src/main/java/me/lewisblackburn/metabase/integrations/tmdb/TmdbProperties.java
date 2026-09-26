@@ -4,4 +4,8 @@ import java.net.URI;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties("metabase.tmdb")
-public record TmdbProperties(URI baseUrl, String accessToken) {}
+public record TmdbProperties(
+        URI baseUrl,
+        String accessToken
+) {
+}

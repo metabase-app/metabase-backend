@@ -39,8 +39,8 @@ class MovieImportGraphQlTest {
     @Test
     void returnsImportedMovieWithCanonicalId() {
         // Given the TMDB importer saves a movie with a canonical ID distinct from its provider ID.
-        given(importService.importMovie(603L)).willReturn(new Movie(
-                42L, "The Matrix", "A computer hacker discovers the truth.", LocalDate.of(1999, 3, 31), 136));
+        given(importService.importMovie(603L)).willReturn(new Movie(42L, "The Matrix",
+                "A computer hacker discovers the truth.", LocalDate.of(1999, 3, 31), 136));
         given(movieRepository.findCastByMovieIds(List.of(42L))).willReturn(Map.of());
 
         // When a movie is imported using its provider and external ID.
@@ -66,7 +66,8 @@ class MovieImportGraphQlTest {
         // Then a readable input error is returned without calling the importer.
         response.errors().satisfy(errors -> {
             assertThat(errors).hasSize(1);
-            assertThat(errors.getFirst().getMessage()).isEqualTo("TMDB movie ID must be a positive integer");
+            assertThat(errors.getFirst().getMessage())
+                    .isEqualTo("TMDB movie ID must be a positive integer");
             assertThat(errors.getFirst().getErrorType().toString()).isEqualTo("BAD_REQUEST");
             assertThat(errors.getFirst().getPath()).isEqualTo("importMovie");
         });
@@ -78,8 +79,8 @@ class MovieImportGraphQlTest {
         // Given a provider that is not supported by the GraphQL schema.
 
         // When the import mutation is executed.
-        var response = graphQlTester.documentName("importMovie")
-                .variable("provider", "IMDB").variable("externalId", "tt0133093").execute();
+        var response = graphQlTester.documentName("importMovie").variable("provider", "IMDB")
+                .variable("externalId", "tt0133093").execute();
 
         // Then schema validation rejects the request before importing anything.
         response.errors().satisfy(errors -> assertThat(errors).isNotEmpty());
@@ -89,7 +90,8 @@ class MovieImportGraphQlTest {
     @Test
     void reportsMissingProviderMovie() {
         // Given TMDB reports that the movie does not exist.
-        given(importService.importMovie(603L)).willThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+        given(importService.importMovie(603L))
+                .willThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
 
         // When the import mutation is executed.
         var response = request("603").execute();
@@ -97,7 +99,8 @@ class MovieImportGraphQlTest {
         // Then the caller receives a useful not-found error.
         response.errors().satisfy(errors -> {
             assertThat(errors).hasSize(1);
-            assertThat(errors.getFirst().getMessage()).isEqualTo("The external service could not find the requested resource");
+            assertThat(errors.getFirst().getMessage())
+                    .isEqualTo("The external service could not find the requested resource");
             assertThat(errors.getFirst().getErrorType().toString()).isEqualTo("NOT_FOUND");
             assertThat(errors.getFirst().getPath()).isEqualTo("importMovie");
         });
@@ -106,7 +109,8 @@ class MovieImportGraphQlTest {
     @Test
     void hidesProviderConnectionDetailsOnFailure() {
         // Given a provider connection fails with internal connection details.
-        given(importService.importMovie(603L)).willThrow(new ResourceAccessException("private connection details"));
+        given(importService.importMovie(603L))
+                .willThrow(new ResourceAccessException("private connection details"));
 
         // When the import mutation is executed.
         var response = request("603").execute();
@@ -114,15 +118,15 @@ class MovieImportGraphQlTest {
         // Then GraphQL returns a safe provider failure message.
         response.errors().satisfy(errors -> {
             assertThat(errors).hasSize(1);
-            assertThat(errors.getFirst().getMessage()).isEqualTo("An external service request failed");
+            assertThat(errors.getFirst().getMessage())
+                    .isEqualTo("An external service request failed");
             assertThat(errors.getFirst().getErrorType().toString()).isEqualTo("INTERNAL_ERROR");
             assertThat(errors.getFirst().getPath()).isEqualTo("importMovie");
         });
     }
 
     private GraphQlTester.Request<?> request(String externalId) {
-        return graphQlTester.documentName("importMovie")
-                .variable("provider", "TMDB")
+        return graphQlTester.documentName("importMovie").variable("provider", "TMDB")
                 .variable("externalId", externalId);
     }
 }

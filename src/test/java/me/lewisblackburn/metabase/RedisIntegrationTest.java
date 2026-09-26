@@ -19,8 +19,8 @@ class RedisIntegrationTest {
 
     @Container
     @SuppressWarnings("resource")
-    static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:8-alpine"))
-            .withExposedPorts(6379);
+    static GenericContainer<?> redis =
+            new GenericContainer<>(DockerImageName.parse("redis:8-alpine")).withExposedPorts(6379);
 
     @DynamicPropertySource
     static void redisProperties(DynamicPropertyRegistry registry) {

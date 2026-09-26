@@ -42,9 +42,7 @@ class TmdbMovieImportServiceIntegrationTest {
     @Container
     @SuppressWarnings("resource")
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine")
-            .withDatabaseName("test")
-            .withUsername("test")
-            .withPassword("test");
+            .withDatabaseName("test").withUsername("test").withPassword("test");
 
     @DynamicPropertySource
     static void postgresProperties(DynamicPropertyRegistry registry) {
@@ -88,9 +86,11 @@ class TmdbMovieImportServiceIntegrationTest {
         assertThat(first.releaseDate()).isEqualTo(LocalDate.of(1999, 3, 30));
         assertThat(first.runtimeMinutes()).isEqualTo(136);
         assertThat(dsl.select(ENTITIES.ORIGINAL_LANGUAGE_CODE).from(ENTITIES)
-                .where(ENTITIES.ID.eq(first.id())).fetchSingle(ENTITIES.ORIGINAL_LANGUAGE_CODE)).isEqualTo("en");
+                .where(ENTITIES.ID.eq(first.id())).fetchSingle(ENTITIES.ORIGINAL_LANGUAGE_CODE))
+                .isEqualTo("en");
         assertThat(dsl.select(MOVIES.ORIGINAL_TITLE).from(MOVIES)
-                .where(MOVIES.ENTITY_ID.eq(first.id())).fetchSingle(MOVIES.ORIGINAL_TITLE)).isEqualTo("The Matrix");
+                .where(MOVIES.ENTITY_ID.eq(first.id())).fetchSingle(MOVIES.ORIGINAL_TITLE))
+                .isEqualTo("The Matrix");
         var mapping = dsl.selectFrom(PROVIDER_ENTITY_MAPPINGS).fetchSingle();
         assertThat(mapping.getEntityId()).isEqualTo(first.id());
         assertThat(mapping.getProviderEntityId()).isEqualTo("603");
@@ -100,8 +100,10 @@ class TmdbMovieImportServiceIntegrationTest {
 
         // Given the next response contains revised details and an older last-seen timestamp exists.
         OffsetDateTime old = OffsetDateTime.now().minusDays(1);
-        dsl.update(PROVIDER_ENTITY_MAPPINGS).set(PROVIDER_ENTITY_MAPPINGS.LAST_SEEN_AT, old).execute();
-        given(client.getMovie(603L)).willReturn(payload("Updated title", "Updated original title", 140));
+        dsl.update(PROVIDER_ENTITY_MAPPINGS).set(PROVIDER_ENTITY_MAPPINGS.LAST_SEEN_AT, old)
+                .execute();
+        given(client.getMovie(603L))
+                .willReturn(payload("Updated title", "Updated original title", 140));
 
         // When the same provider movie is imported again.
         Movie updated = service.importMovie(603L);
@@ -110,8 +112,10 @@ class TmdbMovieImportServiceIntegrationTest {
         assertThat(updated.id()).isEqualTo(first.id());
         assertThat(updated.title()).isEqualTo("Updated title");
         assertThat(updated.runtimeMinutes()).isEqualTo(140);
-        assertThat(dsl.selectFrom(MOVIES).fetchSingle().getOriginalTitle()).isEqualTo("Updated original title");
-        assertThat(dsl.selectFrom(PROVIDER_ENTITY_MAPPINGS).fetchSingle().getLastSeenAt()).isAfter(old);
+        assertThat(dsl.selectFrom(MOVIES).fetchSingle().getOriginalTitle())
+                .isEqualTo("Updated original title");
+        assertThat(dsl.selectFrom(PROVIDER_ENTITY_MAPPINGS).fetchSingle().getLastSeenAt())
+                .isAfter(old);
         assertThat(dsl.fetchCount(ENTITIES)).isEqualTo(1);
         assertThat(dsl.fetchCount(MOVIES)).isEqualTo(1);
         assertThat(dsl.fetchCount(PROVIDER_ENTITY_MAPPINGS)).isEqualTo(1);
@@ -145,7 +149,8 @@ class TmdbMovieImportServiceIntegrationTest {
         assertThatThrownBy(() -> service.importMovie(603L)).isInstanceOf(RuntimeException.class);
 
         // Then the original entity, movie details and mapping timestamp remain intact.
-        assertThat(dsl.selectFrom(ENTITIES).fetchSingle().getDisplayName()).isEqualTo(original.title());
+        assertThat(dsl.selectFrom(ENTITIES).fetchSingle().getDisplayName())
+                .isEqualTo(original.title());
         assertThat(dsl.selectFrom(MOVIES).fetchSingle().getRuntimeMinutes()).isEqualTo(136);
         assertThat(dsl.selectFrom(PROVIDER_ENTITY_MAPPINGS).fetchSingle().getLastSeenAt())
                 .isEqualTo(mapping.getLastSeenAt());
@@ -167,7 +172,8 @@ class TmdbMovieImportServiceIntegrationTest {
             var second = executor.submit(() -> service.importMovie(603L));
 
             // Then both return the same identity and only one movie and mapping exist.
-            assertThat(first.get(20, TimeUnit.SECONDS).id()).isEqualTo(second.get(20, TimeUnit.SECONDS).id());
+            assertThat(first.get(20, TimeUnit.SECONDS).id())
+                    .isEqualTo(second.get(20, TimeUnit.SECONDS).id());
         }
         assertThat(dsl.fetchCount(ENTITIES)).isEqualTo(1);
         assertThat(dsl.fetchCount(MOVIES)).isEqualTo(1);
@@ -177,23 +183,23 @@ class TmdbMovieImportServiceIntegrationTest {
     @Test
     void mutationPersistsMovieAndRepeatedImportReturnsSameId() throws IOException {
         // Given a real GraphQL service and database with a fixture-backed TMDB client.
-        given(client.getMovie(603L)).willReturn(
-                jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class));
+        given(client.getMovie(603L))
+                .willReturn(jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class));
         var tester = ExecutionGraphQlServiceTester.create(graphQlService);
 
         // When the movie is imported twice through the public mutation.
         String id = tester.documentName("importMovie").variable("provider", "TMDB")
-                .variable("externalId", "603").execute()
-                .path("importMovie.id").entity(String.class).get();
+                .variable("externalId", "603").execute().path("importMovie.id").entity(String.class)
+                .get();
         tester.documentName("importMovie").variable("provider", "TMDB")
-                .variable("externalId", "603").execute()
-                .path("importMovie.id").entity(String.class).isEqualTo(id);
+                .variable("externalId", "603").execute().path("importMovie.id").entity(String.class)
+                .isEqualTo(id);
 
         // Then it can be queried by its canonical ID and only one saved movie exists.
-        tester.documentName("movie").variable("id", id).execute()
-                .path("movie.title").entity(String.class).isEqualTo("The Matrix")
-                .path("movie.runtimeMinutes").entity(Integer.class).isEqualTo(136)
-                .path("movie.cast").entityList(Object.class).hasSize(0);
+        tester.documentName("movie").variable("id", id).execute().path("movie.title")
+                .entity(String.class).isEqualTo("The Matrix").path("movie.runtimeMinutes")
+                .entity(Integer.class).isEqualTo(136).path("movie.cast").entityList(Object.class)
+                .hasSize(0);
         assertThat(dsl.fetchCount(MOVIES)).isEqualTo(1);
         assertThat(dsl.fetchCount(PROVIDER_ENTITY_MAPPINGS)).isEqualTo(1);
     }
@@ -208,9 +214,12 @@ class TmdbMovieImportServiceIntegrationTest {
         Movie otherSource = importRepository.save("SOURCE_B", "MOVIE", "123", data);
         Movie otherType = importRepository.save("SOURCE_A", "FILM", "123", data);
 
-        // Then mappings retain distinct canonical identities rather than matching on ID or title alone.
-        assertThat(java.util.List.of(first.id(), otherSource.id(), otherType.id())).doesNotHaveDuplicates();
-        assertThat(importRepository.save("SOURCE_A", "MOVIE", "123", data).id()).isEqualTo(first.id());
+        // Then mappings retain distinct canonical identities rather than matching on ID or title
+        // alone.
+        assertThat(java.util.List.of(first.id(), otherSource.id(), otherType.id()))
+                .doesNotHaveDuplicates();
+        assertThat(importRepository.save("SOURCE_A", "MOVIE", "123", data).id())
+                .isEqualTo(first.id());
         assertThat(dsl.fetchCount(MOVIES)).isEqualTo(3);
         assertThat(dsl.fetchCount(PROVIDER_ENTITY_MAPPINGS)).isEqualTo(3);
     }
@@ -220,7 +229,8 @@ class TmdbMovieImportServiceIntegrationTest {
         // Given a provider mapping incorrectly points to an entity classified as a person.
         given(client.getMovie(603L)).willReturn(payload("The Matrix", "The Matrix", 136));
         Movie saved = service.importMovie(603L);
-        dsl.update(ENTITIES).set(ENTITIES.ENTITY_TYPE, "PERSON").where(ENTITIES.ID.eq(saved.id())).execute();
+        dsl.update(ENTITIES).set(ENTITIES.ENTITY_TYPE, "PERSON").where(ENTITIES.ID.eq(saved.id()))
+                .execute();
         given(client.getMovie(603L)).willReturn(payload("Changed title", "Changed title", 140));
 
         // When an import attempts to update the incorrectly mapped entity.
@@ -235,11 +245,8 @@ class TmdbMovieImportServiceIntegrationTest {
     }
 
     private TmdbMovieDto payload(String title, String originalTitle, int runtime) {
-        var node = jsonMapper.createObjectNode()
-                .put("id", 603L)
-                .put("title", title)
-                .put("original_title", originalTitle)
-                .put("runtime", runtime);
+        var node = jsonMapper.createObjectNode().put("id", 603L).put("title", title)
+                .put("original_title", originalTitle).put("runtime", runtime);
         return jsonMapper.treeToValue(node, TmdbMovieDto.class);
     }
 }

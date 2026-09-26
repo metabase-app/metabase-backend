@@ -11,7 +11,8 @@ public final class DateUtils {
     /**
      * Parses an ISO local date, returning {@code null} for missing or blank values.
      *
-     * @throws java.time.format.DateTimeParseException if a nonblank value is not a valid ISO local date
+     * @throws java.time.format.DateTimeParseException if a nonblank value is not a valid ISO local
+     *         date
      */
     public static LocalDate parseOptionalLocalDate(String value) {
         return value == null || value.isBlank() ? null : LocalDate.parse(value);
