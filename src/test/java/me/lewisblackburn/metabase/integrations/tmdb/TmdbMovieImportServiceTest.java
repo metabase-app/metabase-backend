@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import me.lewisblackburn.metabase.event.ImportEvents;
 import me.lewisblackburn.metabase.integrations.tmdb.dto.TmdbMovieDto;
 import me.lewisblackburn.metabase.movie.JooqMovieImportRepository;
 import me.lewisblackburn.metabase.movie.model.Movie;
@@ -34,10 +36,13 @@ class TmdbMovieImportServiceTest {
     @Mock
     private JooqMovieImportRepository repository;
 
+    @Mock
+    private ImportEvents importEvents;
+
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private TmdbMovieImportService service() {
-        return new TmdbMovieImportService(client, new TmdbMovieMapper(), repository);
+        return new TmdbMovieImportService(client, new TmdbMovieMapper(), repository, importEvents);
     }
 
     @Test
@@ -71,7 +76,7 @@ class TmdbMovieImportServiceTest {
         // When importing is attempted, then validation fails before any external or database calls.
         assertThatIllegalArgumentException().isThrownBy(() -> service().importMovie(id))
                 .withMessage("TMDB movie ID must be positive");
-        verifyNoInteractions(client, repository);
+        verifyNoInteractions(client, repository, importEvents);
     }
 
     @ParameterizedTest
@@ -94,6 +99,20 @@ class TmdbMovieImportServiceTest {
         given(client.getMovie(603L)).willThrow(failure);
 
         // When importing is attempted, then the failure propagates without database writes.
+        assertThatThrownBy(() -> service().importMovie(603L)).isSameAs(failure);
+        verifyNoInteractions(repository);
+        verify(importEvents).failed("TMDB", "MOVIE", "603", failure);
+    }
+
+    @Test
+    void preservesProviderFailureWhenAuditStorageAlsoFails() {
+        // Given both the provider and audit storage are unavailable.
+        var failure = new ResourceAccessException("Connection failed");
+        given(client.getMovie(603L)).willThrow(failure);
+        doThrow(new IllegalStateException("Database unavailable")).when(importEvents).failed("TMDB",
+                "MOVIE", "603", failure);
+
+        // When the import fails, then its original failure remains the reported cause.
         assertThatThrownBy(() -> service().importMovie(603L)).isSameAs(failure);
         verifyNoInteractions(repository);
     }

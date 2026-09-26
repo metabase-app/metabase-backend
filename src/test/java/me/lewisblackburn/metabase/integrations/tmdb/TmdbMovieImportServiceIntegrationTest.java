@@ -29,6 +29,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.client.ResourceAccessException;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -36,7 +37,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
 @Testcontainers
-@Sql(statements = "TRUNCATE TABLE entities, data_sources RESTART IDENTITY CASCADE")
+@Sql(statements = "TRUNCATE TABLE entities, data_sources, audit_events RESTART IDENTITY CASCADE")
 class TmdbMovieImportServiceIntegrationTest {
 
     @Container
@@ -69,6 +70,25 @@ class TmdbMovieImportServiceIntegrationTest {
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     @Test
+    void recordsProviderFailuresAsInternalEvents() {
+        // Given fetching a provider movie fails with a message that must not enter audit details.
+        var failure = new ResourceAccessException("secret-token");
+        given(client.getMovie(603L)).willThrow(failure);
+
+        // When importing fails, its original exception is preserved and its audit event is saved.
+        assertThatThrownBy(() -> service.importMovie(603L)).isSameAs(failure);
+
+        // Then the failure is internal, identifies the provider movie, and excludes sensitive text.
+        var event = dsl.fetchOne("SELECT * FROM audit_events");
+        assertThat(event.get("action", String.class)).isEqualTo("IMPORT_FAILED");
+        assertThat(event.get("audience", String.class)).isEqualTo("INTERNAL");
+        assertThat(event.get("outcome", String.class)).isEqualTo("FAILURE");
+        assertThat(event.get("details").toString()).contains("603", "ResourceAccessException")
+                .doesNotContain("secret-token");
+        assertThat(dsl.fetchCount(ENTITIES)).isZero();
+    }
+
+    @Test
     void importsMovieAndUpdatesItWithoutDuplicates() throws IOException {
         // Given TMDB supplies a complete movie, with fetching outside a database transaction.
         TmdbMovieDto source = jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class);
@@ -82,6 +102,10 @@ class TmdbMovieImportServiceIntegrationTest {
 
         // Then the canonical movie and provider identity are stored separately.
         assertThat(first.id()).isNotNull().isNotEqualTo(603L);
+        var event = dsl.fetchOne("SELECT * FROM audit_events");
+        assertThat(event.get("entity_id", Long.class)).isEqualTo(first.id());
+        assertThat(event.get("action", String.class)).isEqualTo("IMPORT_COMPLETED");
+        assertThat(event.get("audience", String.class)).isEqualTo("INTERNAL");
         assertThat(first.title()).isEqualTo("The Matrix");
         assertThat(first.releaseDate()).isEqualTo(LocalDate.of(1999, 3, 30));
         assertThat(first.runtimeMinutes()).isEqualTo(136);
@@ -123,6 +147,29 @@ class TmdbMovieImportServiceIntegrationTest {
     }
 
     @Test
+    void rollsBackMovieWhenSuccessEventCannotBeStored() {
+        // Given valid movie data but an audit log that temporarily rejects successful import
+        // events.
+        given(client.getMovie(603L)).willReturn(payload("The Matrix", "The Matrix", 136));
+        dsl.execute(
+                "ALTER TABLE audit_events ADD CONSTRAINT test_reject_success CHECK (action <> 'IMPORT_COMPLETED')");
+        try {
+            // When saving the event fails after the catalogue writes.
+            assertThatThrownBy(() -> service.importMovie(603L))
+                    .isInstanceOf(RuntimeException.class);
+
+            // Then the catalogue rolls back and only a separate failure event survives.
+            assertThat(dsl.fetchCount(ENTITIES)).isZero();
+            assertThat(dsl.fetchCount(MOVIES)).isZero();
+            assertThat(dsl.fetchCount(PROVIDER_ENTITY_MAPPINGS)).isZero();
+            assertThat(dsl.fetchOne("SELECT action FROM audit_events").get(0, String.class))
+                    .isEqualTo("IMPORT_FAILED");
+        } finally {
+            dsl.execute("ALTER TABLE audit_events DROP CONSTRAINT test_reject_success");
+        }
+    }
+
+    @Test
     void rollsBackNewMovieWhenMovieDetailsCannotBeStored() {
         // Given TMDB supplies an original title that exceeds the database column limit.
         given(client.getMovie(603L)).willReturn(payload("The Matrix", "x".repeat(501), 136));
@@ -135,6 +182,8 @@ class TmdbMovieImportServiceIntegrationTest {
         assertThat(dsl.fetchCount(MOVIES)).isZero();
         assertThat(dsl.fetchCount(PROVIDER_ENTITY_MAPPINGS)).isZero();
         assertThat(dsl.fetchCount(DATA_SOURCES)).isZero();
+        assertThat(dsl.fetchOne("SELECT action FROM audit_events").get(0, String.class))
+                .isEqualTo("IMPORT_FAILED");
     }
 
     @Test

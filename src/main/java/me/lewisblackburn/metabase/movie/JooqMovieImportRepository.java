@@ -7,6 +7,7 @@ import static me.lewisblackburn.metabase.jooq.tables.ProviderEntityMappings.PROV
 
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
+import me.lewisblackburn.metabase.event.ImportEvents;
 import me.lewisblackburn.metabase.datasource.DataSourceType;
 import me.lewisblackburn.metabase.entity.EntityType;
 import me.lewisblackburn.metabase.movie.model.Movie;
@@ -22,6 +23,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
 
     private final DSLContext dsl;
     private final JooqMovieRepository movies;
+    private final ImportEvents importEvents;
 
     @Override
     @Transactional
@@ -84,6 +86,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
                 .set(MOVIES.RELEASE_DATE, data.releaseDate())
                 .set(MOVIES.RUNTIME_MINUTES, data.runtimeMinutes()).execute();
 
+        importEvents.completed(sourceName, providerEntityType, externalId, entityId);
         return movies.find(entityId);
     }
 }
