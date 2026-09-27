@@ -8,6 +8,9 @@ import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandle
 import org.springframework.graphql.execution.ErrorType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.AuthenticationException;
+import jakarta.validation.ConstraintViolationException;
+import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -15,6 +18,25 @@ import org.springframework.web.client.RestClientResponseException;
 @ControllerAdvice
 @Slf4j
 public class GraphQlExceptionHandlerAdvice {
+
+    @GraphQlExceptionHandler
+    public GraphQLError handleAuthenticationFailure(AuthenticationException exception,
+            DataFetchingEnvironment environment) {
+        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.UNAUTHORIZED)
+                .message("Invalid credentials").build();
+    }
+
+    @GraphQlExceptionHandler
+    public GraphQLError handleValidationFailure(ConstraintViolationException exception,
+            DataFetchingEnvironment environment) {
+        // Do not include rejected credential values in errors or logs.
+        String message = exception.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .sorted()
+                .collect(Collectors.joining("; "));
+        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.BAD_REQUEST)
+                .message(message).build();
+    }
 
     @GraphQlExceptionHandler({AccessDeniedException.class,
             AuthenticationCredentialsNotFoundException.class})

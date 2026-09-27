@@ -142,8 +142,8 @@ class UserGraphQlTest {
         var response = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
 
         // Then the field is forbidden without exposing the underlying model value.
-        assertForbidden(response, "user.email");
-        response.path("user.email").valueIsNull();
+        assertForbidden(response, "user");
+        response.path("user").valueIsNull();
     }
 
     @Test
@@ -158,8 +158,8 @@ class UserGraphQlTest {
         var anonymous = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
 
         // Then anonymous access does not count as authenticated ownership.
-        assertForbidden(anonymous, "user.email");
-        anonymous.path("user.email").valueIsNull();
+        assertForbidden(anonymous, "user");
+        anonymous.path("user").valueIsNull();
 
         // Given the matching username is present in a token that has not been authenticated.
         SecurityContextHolder.getContext().setAuthentication(
@@ -168,8 +168,8 @@ class UserGraphQlTest {
 
         // When the email is requested again, the unverified identity must also be rejected.
         var unverified = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
-        assertForbidden(unverified, "user.email");
-        unverified.path("user.email").valueIsNull();
+        assertForbidden(unverified, "user");
+        unverified.path("user").valueIsNull();
     }
 
     @Test

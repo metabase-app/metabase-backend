@@ -20,6 +20,7 @@ import me.lewisblackburn.metabase.movie.JooqMovieImportRepository;
 import me.lewisblackburn.metabase.movie.model.MovieImportData;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.ExecutionGraphQlService;
 import org.springframework.graphql.test.tester.ExecutionGraphQlServiceTester;
@@ -231,6 +232,7 @@ class TmdbMovieImportServiceIntegrationTest {
     }
 
     @Test
+    @WithMockUser
     void mutationPersistsMovieAndRepeatedImportReturnsSameId() throws IOException {
         // Given a real GraphQL service and database with a fixture-backed TMDB client.
         given(client.getMovie(603L))

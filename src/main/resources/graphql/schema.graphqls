@@ -13,9 +13,28 @@ enum MovieProvider {
 }
 
 type Mutation {
+  signup(input: SignupInput!): AuthPayload!
+  login(input: LoginInput!): AuthPayload!
+  logout: Boolean!
   importMovie(provider: MovieProvider!, externalId: ID!): Movie!
   followUser(userId: ID!): User!
   unfollowUser(userId: ID!): User!
+}
+
+input SignupInput {
+  username: String!
+  email: String!
+  password: String!
+}
+
+input LoginInput {
+  username: String!
+  password: String!
+}
+
+type AuthPayload {
+  id: ID!
+  username: String!
 }
 
 type Movie {

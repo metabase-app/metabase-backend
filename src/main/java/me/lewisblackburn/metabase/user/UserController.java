@@ -17,6 +17,7 @@ import org.springframework.graphql.data.pagination.Subrange;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 @Controller
+@PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class UserController {
     private final UserRepository userRepository;
