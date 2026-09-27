@@ -49,20 +49,3 @@ enum Role {
   ADMIN
   USER
 }
-
-type UserConnection {
-  edges: [UserEdge!]!
-  pageInfo: PageInfo!
-}
-
-type UserEdge {
-  node: User!
-  cursor: String!
-}
-
-type PageInfo {
-  startCursor: String
-  endCursor: String
-  hasPreviousPage: Boolean!
-  hasNextPage: Boolean!
-}

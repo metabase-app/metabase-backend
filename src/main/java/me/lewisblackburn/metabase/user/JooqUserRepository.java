@@ -12,8 +12,9 @@ import org.springframework.stereotype.Repository;
 import lombok.RequiredArgsConstructor;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
-import graphql.relay.Connection;
-import me.lewisblackburn.metabase.pagination.CursorPageRequest;
+import org.springframework.data.domain.Window;
+import org.springframework.data.domain.ScrollPosition;
+import org.springframework.graphql.data.pagination.Subrange;
 import me.lewisblackburn.metabase.pagination.JooqPagination;
 
 @Repository
@@ -58,7 +59,7 @@ public class JooqUserRepository implements UserRepository {
     }
 
     @Override
-    public Connection<User> findFollowers(Long userId, CursorPageRequest page) {
+    public Window<User> findFollowers(Long userId, Subrange<ScrollPosition> page) {
         return JooqPagination.fetch(dsl
                 .select(USERS.ID, USERS.USERNAME, USERS.EMAIL,
                         USERS.CREATED_AT, USERS.UPDATED_AT, USERS.LAST_SEEN_AT, USERS.DELETED_AT)
@@ -68,7 +69,7 @@ public class JooqUserRepository implements UserRepository {
     }
 
     @Override
-    public Connection<User> findFollowing(Long userId, CursorPageRequest page) {
+    public Window<User> findFollowing(Long userId, Subrange<ScrollPosition> page) {
         return JooqPagination.fetch(dsl
                 .select(USERS.ID, USERS.USERNAME, USERS.EMAIL,
                         USERS.CREATED_AT, USERS.UPDATED_AT, USERS.LAST_SEEN_AT, USERS.DELETED_AT)

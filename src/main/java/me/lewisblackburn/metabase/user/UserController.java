@@ -11,8 +11,9 @@ import org.springframework.stereotype.Controller;
 import lombok.RequiredArgsConstructor;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
-import graphql.relay.Connection;
-import me.lewisblackburn.metabase.pagination.CursorPageRequest;
+import org.springframework.data.domain.Window;
+import org.springframework.data.domain.ScrollPosition;
+import org.springframework.graphql.data.pagination.Subrange;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 @Controller
@@ -42,19 +43,13 @@ public class UserController {
     }
 
     @SchemaMapping(typeName = "User", field = "followers")
-    public Connection<User> followers(User user, @Argument Integer first, @Argument String after) {
-        return userRepository.findFollowers(user.id(), CursorPageRequest.builder()
-                .first(first)
-                .after(after)
-                .build());
+    public Window<User> followers(User user, Subrange<ScrollPosition> page) {
+        return userRepository.findFollowers(user.id(), page);
     }
 
     @SchemaMapping(typeName = "User", field = "following")
-    public Connection<User> following(User user, @Argument Integer first, @Argument String after) {
-        return userRepository.findFollowing(user.id(), CursorPageRequest.builder()
-                .first(first)
-                .after(after)
-                .build());
+    public Window<User> following(User user, Subrange<ScrollPosition> page) {
+        return userRepository.findFollowing(user.id(), page);
     }
 
     @SchemaMapping(typeName = "User", field = "email")

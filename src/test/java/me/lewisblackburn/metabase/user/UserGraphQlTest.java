@@ -3,20 +3,22 @@ package me.lewisblackburn.metabase.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 
 import java.util.List;
-import me.lewisblackburn.metabase.pagination.CursorPageRequest;
+import java.util.Map;
+import org.springframework.data.domain.Window;
+import org.springframework.data.domain.ScrollPosition;
+import org.springframework.graphql.data.pagination.CursorStrategy;
+import org.springframework.graphql.data.pagination.Subrange;
 import me.lewisblackburn.metabase.config.GraphQlScalarConfiguration;
+import me.lewisblackburn.metabase.config.GraphQlPaginationConfiguration;
 import me.lewisblackburn.metabase.config.MethodSecurityConfiguration;
 import me.lewisblackburn.metabase.security.Ownership;
 import me.lewisblackburn.metabase.security.UserPrincipal;
 import me.lewisblackburn.metabase.user.model.User;
-import graphql.relay.Connection;
-import graphql.relay.DefaultConnection;
-import graphql.relay.DefaultConnectionCursor;
-import graphql.relay.DefaultEdge;
-import graphql.relay.DefaultPageInfo;
-import me.lewisblackburn.metabase.pagination.IdCursor;
 import me.lewisblackburn.metabase.pagination.JooqPagination;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -31,11 +33,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @GraphQlTest(UserController.class)
-@Import({GraphQlScalarConfiguration.class, MethodSecurityConfiguration.class, Ownership.class})
+@Import({GraphQlScalarConfiguration.class, GraphQlPaginationConfiguration.class,
+        MethodSecurityConfiguration.class, Ownership.class})
 class UserGraphQlTest {
 
     @Autowired
     private GraphQlTester graphQlTester;
+
+    @Autowired
+    private CursorStrategy<ScrollPosition> cursorStrategy;
 
     @MockitoBean
     private UserRepository userRepository;
@@ -121,43 +127,47 @@ class UserGraphQlTest {
         // Given Alice follows Bob, and Alice is the authenticated viewer.
         authenticate(1L, "alice", "ROLE_USER");
         given(userRepository.find(1L)).willReturn(user(1L, "alice"));
-        var cursor = new DefaultConnectionCursor(IdCursor.encode(11L));
-        Connection<User> following = new DefaultConnection<>(
-                List.of(new DefaultEdge<>(user(11L, "bob"), cursor)),
-                new DefaultPageInfo(cursor, cursor, false, true));
-        given(userRepository.findFollowing(1L, page(1, IdCursor.encode(10L))))
-                .willReturn(following);
-        given(userRepository.findFollowers(1L, page(20, null))).willReturn(JooqPagination.empty());
+        String cursor = cursorStrategy.toCursor(ScrollPosition.forward(Map.of("id", 11L)));
+        var following = Window.from(List.of(user(11L, "bob")),
+                index -> ScrollPosition.forward(Map.of("id", 11L)), true);
+        given(userRepository.findFollowing(eq(1L), any())).willReturn(following);
+        given(userRepository.findFollowers(eq(1L), any())).willReturn(JooqPagination.empty());
 
         // When an explicit following page and the default followers page are selected.
         var response = graphQlTester.document("""
-                {
+                query($after: String!) {
                   user(id: "1") {
-                    following(first: 1, after: "MTA=") {
+                    following(first: 1, after: $after) {
                       edges { cursor node { id email } }
                       pageInfo { startCursor endCursor hasPreviousPage hasNextPage }
                     }
                     followers { edges { cursor node { id } } pageInfo { endCursor hasNextPage } }
                   }
                 }
-                """).execute();
+                """)
+                .variable("after",
+                        cursorStrategy.toCursor(ScrollPosition.forward(Map.of("id", 10L))))
+                .execute();
 
         // Then pagination arguments reach the repository and nested emails remain private.
         assertForbidden(response, "user.following.edges[0].node.email");
         response.path("user.following.edges[0].node.id").entity(String.class).isEqualTo("11");
         response.path("user.following.edges[0].node.email").valueIsNull();
         response.path("user.following.edges[0].cursor").entity(String.class)
-                .isEqualTo(IdCursor.encode(11L));
+                .isEqualTo(cursor);
         response.path("user.following.pageInfo.startCursor").entity(String.class)
-                .isEqualTo(IdCursor.encode(11L));
+                .isEqualTo(cursor);
         response.path("user.following.pageInfo.hasPreviousPage").entity(Boolean.class)
                 .isEqualTo(false);
         response.path("user.following.pageInfo.endCursor").entity(String.class)
-                .isEqualTo(IdCursor.encode(11L));
+                .isEqualTo(cursor);
         response.path("user.following.pageInfo.hasNextPage").entity(Boolean.class).isEqualTo(true);
         response.path("user.followers.edges").entityList(User.class).hasSize(0);
-        verify(userRepository).findFollowing(1L, page(1, IdCursor.encode(10L)));
-        verify(userRepository).findFollowers(1L, page(20, null));
+        verify(userRepository).findFollowing(eq(1L),
+                argThat(range -> range.count().orElse(20) == 1 && range.position().orElseThrow()
+                        .equals(ScrollPosition.forward(Map.of("id", 10L)))));
+        verify(userRepository).findFollowers(eq(1L),
+                argThat(range -> range.count().orElse(20) == 20 && range.position().isEmpty()));
     }
 
     private void assertForbidden(GraphQlTester.Response response, String path) {
@@ -219,13 +229,6 @@ class UserGraphQlTest {
                 .roles(List.of())
                 .following(JooqPagination.empty())
                 .followers(JooqPagination.empty())
-                .build();
-    }
-
-    private CursorPageRequest page(Integer first, String after) {
-        return CursorPageRequest.builder()
-                .first(first)
-                .after(after)
                 .build();
     }
 

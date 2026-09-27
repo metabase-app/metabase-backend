@@ -7,9 +7,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
-import graphql.relay.Edge;
-import me.lewisblackburn.metabase.pagination.IdCursor;
-import me.lewisblackburn.metabase.pagination.CursorPageRequest;
+import java.util.Map;
+import org.springframework.data.domain.ScrollPosition;
+import org.springframework.graphql.data.pagination.Subrange;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
 import org.jooq.DSLContext;
@@ -93,62 +93,47 @@ class UserRepositoryIntegrationTest {
                 .values(unrelated, alice)
                 .execute();
 
-        // When one follower is requested at a time using the preceding page's cursor.
+        // When follower windows are requested using the previous window's keyset position.
         var firstPage = userRepository.findFollowers(bob, page(1, null));
-        var secondPage =
-                userRepository.findFollowers(bob,
-                        page(1, firstPage.getPageInfo().getEndCursor().getValue()));
+        var secondPage = userRepository.findFollowers(bob,
+                new Subrange<>(firstPage.positionAt(0), 1, true));
 
-        // Then pages contain only Bob's followers in ID order without overlap.
-        assertThat(firstPage.getEdges().stream().map(Edge::getNode).toList()).extracting(User::id)
-                .containsExactly(alice);
-        assertThat(firstPage.getPageInfo().getEndCursor().getValue())
-                .isEqualTo(IdCursor.encode(alice));
-        assertThat(firstPage.getPageInfo().isHasNextPage()).isTrue();
-        assertThat(secondPage.getEdges().stream().map(Edge::getNode).toList()).extracting(User::id)
-                .containsExactly(carol);
-        assertThat(secondPage.getPageInfo().getEndCursor().getValue())
-                .isEqualTo(IdCursor.encode(carol));
-        assertThat(secondPage.getPageInfo().isHasNextPage()).isFalse();
+        // Then each window contains the correct followers without duplication or unrelated users.
+        assertThat(firstPage.getContent()).extracting(User::id).containsExactly(alice);
+        assertThat(firstPage.positionAt(0)).isEqualTo(ScrollPosition.forward(Map.of("id", alice)));
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(secondPage.getContent()).extracting(User::id).containsExactly(carol);
+        assertThat(secondPage.hasNext()).isFalse();
 
-        // When Alice's following list is requested using the same pagination rules.
+        // When the following direction is paginated using the same Spring types.
         var firstFollowing = userRepository.findFollowing(alice, page(1, null));
-        var secondFollowing =
-                userRepository.findFollowing(alice,
-                        page(1, firstFollowing.getPageInfo().getEndCursor().getValue()));
+        var secondFollowing = userRepository.findFollowing(alice,
+                new Subrange<>(firstFollowing.positionAt(0), 1, true));
 
-        // Then the direction is correct and every node has the complete user mapping.
-        assertThat(firstFollowing.getEdges().stream().map(Edge::getNode).toList())
-                .containsExactly(userRepository.find(bob));
-        assertThat(firstFollowing.getPageInfo().isHasNextPage()).isTrue();
-        assertThat(secondFollowing.getEdges().stream().map(Edge::getNode).toList())
-                .containsExactly(userRepository.find(carol));
-        assertThat(secondFollowing.getPageInfo().isHasNextPage()).isFalse();
-
-        // When Relay's valid zero-sized page is requested, it still reports remaining results.
-        var zeroPage = userRepository.findFollowing(alice, page(0, null));
-        assertThat(zeroPage.getEdges()).isEmpty();
-        assertThat(zeroPage.getPageInfo().getStartCursor()).isNull();
-        assertThat(zeroPage.getPageInfo().getEndCursor()).isNull();
-        assertThat(zeroPage.getPageInfo().isHasNextPage()).isTrue();
-        assertThat(userRepository.findFollowers(carol, page(20, null)).getEdges().stream()
-                .map(Edge::getNode).toList())
+        // Then the full user mapping and relationship direction are preserved.
+        assertThat(firstFollowing.getContent()).containsExactly(userRepository.find(bob));
+        assertThat(firstFollowing.hasNext()).isTrue();
+        assertThat(secondFollowing.getContent()).containsExactly(userRepository.find(carol));
+        assertThat(secondFollowing.hasNext()).isFalse();
+        assertThat(userRepository.findFollowers(carol, page(20, null)).getContent())
                 .extracting(User::id).containsExactly(alice, bob);
-        assertThat(userRepository.findFollowing(bob, page(20, null)).getEdges().stream()
-                .map(Edge::getNode).toList())
+        assertThat(userRepository.findFollowing(bob, page(20, null)).getContent())
                 .extracting(User::id).containsExactly(carol);
 
-        // When a user has no follows or a cursor is past the final follower.
+        // When a window is empty or the cursor is beyond the last follower.
         var emptyFollowers = userRepository.findFollowers(isolated, page(20, null));
         var emptyFollowing = userRepository.findFollowing(isolated, page(20, null));
-        var pastEnd = userRepository.findFollowers(bob, page(1, IdCursor.encode(carol)));
+        var pastEnd = userRepository.findFollowers(bob, page(1, carol));
 
-        // Then the empty pages have no cursor and no next page.
-        for (var page : List.of(emptyFollowers, emptyFollowing, pastEnd)) {
-            assertThat(page.getEdges().stream().map(Edge::getNode).toList()).isEmpty();
-            assertThat(page.getPageInfo().getEndCursor()).isNull();
-            assertThat(page.getPageInfo().isHasNextPage()).isFalse();
+        // Then empty windows do not report further results.
+        for (var window : List.of(emptyFollowers, emptyFollowing, pastEnd)) {
+            assertThat(window.getContent()).isEmpty();
+            assertThat(window.hasNext()).isFalse();
         }
+
+        // When the count is omitted, the common SQL adapter supplies twenty rows per window.
+        assertThat(userRepository.findFollowing(alice, page(null, null)).getContent())
+                .extracting(User::id).containsExactly(bob, carol);
     }
 
     @Test
@@ -156,7 +141,7 @@ class UserRepositoryIntegrationTest {
         // Given a user whose follow list can be requested.
         Long userId = insertUser("page_user");
 
-        // When page sizes exceed the bounds or the cursor is not positive.
+        // When counts exceed the bounds or IDs are not positive.
         // Then invalid requests fail before querying relationships.
         for (int first : List.of(-1, 101, Integer.MAX_VALUE)) {
             assertThatThrownBy(() -> userRepository.findFollowers(userId, page(first, null)))
@@ -164,9 +149,15 @@ class UserRepositoryIntegrationTest {
             assertThatThrownBy(() -> userRepository.findFollowing(userId, page(first, null)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
-        assertThatThrownBy(() -> userRepository.findFollowers(userId, page(20, "MA==")))
+        assertThatThrownBy(() -> userRepository.findFollowers(userId, page(20, 0L)))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> userRepository.findFollowing(userId, page(20, "LTE=")))
+        assertThatThrownBy(() -> userRepository.findFollowing(userId, page(20, -1L)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> userRepository.findFollowing(userId,
+                new Subrange<>(ScrollPosition.offset(5L), 20, true)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> userRepository.findFollowing(userId,
+                new Subrange<>(ScrollPosition.keyset(), 20, false)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -178,11 +169,8 @@ class UserRepositoryIntegrationTest {
                 .fetchOne(USERS.ID);
     }
 
-    private CursorPageRequest page(Integer first, String after) {
-        return CursorPageRequest.builder()
-                .first(first)
-                .after(after)
-                .build();
+    private Subrange<ScrollPosition> page(Integer first, Long after) {
+        return new Subrange<>(after == null ? null : ScrollPosition.forward(Map.of("id", after)),
+                first, true);
     }
-
 }
