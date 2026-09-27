@@ -1,5 +1,8 @@
 package me.lewisblackburn.metabase.movie;
 
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import me.lewisblackburn.metabase.security.GraphQlRateLimiter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
@@ -28,6 +31,13 @@ class MovieControllerTest {
     @Mock
     private MovieRepository movieRepository;
 
+    @Mock
+    private GraphQlRateLimiter rateLimiter;
+
+    private final ServletRequestAttributes http =
+            new ServletRequestAttributes(
+                    new MockHttpServletRequest());
+
     @InjectMocks
     private MovieController controller;
 
@@ -37,7 +47,7 @@ class MovieControllerTest {
         given(movieRepository.findAll()).willReturn(List.of(MOVIE));
 
         // When all movies are requested from the controller.
-        List<Movie> result = controller.movies();
+        List<Movie> result = controller.movies(http);
 
         // Then the controller returns the repository result.
         assertThat(result).containsExactly(MOVIE);
@@ -49,7 +59,7 @@ class MovieControllerTest {
         given(movieRepository.find(MOVIE.id())).willReturn(MOVIE);
 
         // When that movie is requested from the controller.
-        Movie result = controller.movie(MOVIE.id());
+        Movie result = controller.movie(MOVIE.id(), http);
 
         // Then the controller returns the matching movie.
         assertThat(result).isSameAs(MOVIE);

@@ -9,6 +9,9 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 import lombok.RequiredArgsConstructor;
+import me.lewisblackburn.metabase.security.GraphQlRateLimiter;
+import org.springframework.graphql.data.method.annotation.ContextValue;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
 import org.springframework.data.domain.Window;
@@ -23,22 +26,27 @@ import me.lewisblackburn.metabase.security.UserPrincipal;
 @PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class UserController {
+    private final GraphQlRateLimiter rateLimiter;
     private final UserRepository userRepository;
     private final CurrentUser currentUser;
     private final UserLookup userLookup;
 
     @QueryMapping
-    public User me(@AuthenticationPrincipal UserPrincipal principal) {
+    public User me(@AuthenticationPrincipal UserPrincipal principal,
+            @ContextValue("http") ServletRequestAttributes http) {
+        rateLimiter.check("me", http.getRequest().getRemoteAddr());
         return userLookup.requireActiveUser(currentUser.requireUserId(principal));
     }
 
     @QueryMapping
-    public User user(@Argument Long id) {
+    public User user(@Argument Long id, @ContextValue("http") ServletRequestAttributes http) {
+        rateLimiter.check("user", http.getRequest().getRemoteAddr());
         return userRepository.find(id);
     }
 
     @QueryMapping
-    public List<User> users() {
+    public List<User> users(@ContextValue("http") ServletRequestAttributes http) {
+        rateLimiter.check("users", http.getRequest().getRemoteAddr());
         return userRepository.findAll();
     }
 

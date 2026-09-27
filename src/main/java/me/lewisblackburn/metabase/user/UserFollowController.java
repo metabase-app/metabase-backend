@@ -1,6 +1,9 @@
 package me.lewisblackburn.metabase.user;
 
 import lombok.RequiredArgsConstructor;
+import me.lewisblackburn.metabase.security.GraphQlRateLimiter;
+import org.springframework.graphql.data.method.annotation.ContextValue;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import me.lewisblackburn.metabase.security.UserPrincipal;
 import me.lewisblackburn.metabase.security.CurrentUser;
 import me.lewisblackburn.metabase.user.model.User;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Controller;
 @Controller
 @RequiredArgsConstructor
 public class UserFollowController {
+    private final GraphQlRateLimiter rateLimiter;
     private final UserFollowService followService;
     private final CurrentUser currentUser;
 
@@ -20,14 +24,18 @@ public class UserFollowController {
     @MutationMapping
     @PreAuthorize("isAuthenticated()")
     public User followUser(@Argument Long userId,
-            @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal,
+            @ContextValue("http") ServletRequestAttributes http) {
+        rateLimiter.check("followUser", http.getRequest().getRemoteAddr());
         return followService.follow(currentUser.requireUserId(principal), userId);
     }
 
     @MutationMapping
     @PreAuthorize("isAuthenticated()")
     public User unfollowUser(@Argument Long userId,
-            @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal,
+            @ContextValue("http") ServletRequestAttributes http) {
+        rateLimiter.check("unfollowUser", http.getRequest().getRemoteAddr());
         return followService.unfollow(currentUser.requireUserId(principal), userId);
     }
 

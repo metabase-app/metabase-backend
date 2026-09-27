@@ -1,5 +1,9 @@
 package me.lewisblackburn.metabase.movie;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import me.lewisblackburn.metabase.security.GraphQlRateLimiter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -18,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.graphql.test.tester.GraphQlTester;
+import org.springframework.graphql.test.tester.ExecutionGraphQlServiceTester;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -26,6 +31,20 @@ import org.springframework.http.HttpStatus;
 @GraphQlTest({MovieImportController.class, MovieController.class})
 @Import(GraphQlScalarConfiguration.class)
 class MovieImportGraphQlTest {
+
+    @MockitoBean
+    private GraphQlRateLimiter rateLimiter;
+
+    @BeforeEach
+    void provideHttpContext() {
+        var http = new ServletRequestAttributes(
+                new MockHttpServletRequest());
+        graphQlTester =
+                ((ExecutionGraphQlServiceTester) graphQlTester).mutate()
+                        .configureExecutionInput((input, builder) -> builder
+                                .graphQLContext(context -> context.put("http", http)).build())
+                        .build();
+    }
 
     @Autowired
     private GraphQlTester graphQlTester;

@@ -1,5 +1,9 @@
 package me.lewisblackburn.metabase.movie;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import me.lewisblackburn.metabase.security.GraphQlRateLimiter;
 import static org.mockito.BDDMockito.given;
 
 import java.time.LocalDate;
@@ -12,12 +16,27 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
 import org.springframework.graphql.test.tester.GraphQlTester;
+import org.springframework.graphql.test.tester.ExecutionGraphQlServiceTester;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @GraphQlTest(MovieController.class)
 @Import(GraphQlScalarConfiguration.class)
 class MovieGraphQlTest {
+
+    @MockitoBean
+    private GraphQlRateLimiter rateLimiter;
+
+    @BeforeEach
+    void provideHttpContext() {
+        var http = new ServletRequestAttributes(
+                new MockHttpServletRequest());
+        graphQlTester =
+                ((ExecutionGraphQlServiceTester) graphQlTester).mutate()
+                        .configureExecutionInput((input, builder) -> builder
+                                .graphQLContext(context -> context.put("http", http)).build())
+                        .build();
+    }
 
     @Autowired
     private GraphQlTester graphQlTester;

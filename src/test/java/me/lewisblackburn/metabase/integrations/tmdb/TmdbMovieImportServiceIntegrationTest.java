@@ -237,7 +237,12 @@ class TmdbMovieImportServiceIntegrationTest {
         // Given a real GraphQL service and database with a fixture-backed TMDB client.
         given(client.getMovie(603L))
                 .willReturn(jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class));
-        var tester = ExecutionGraphQlServiceTester.create(graphQlService);
+        var http = new org.springframework.web.context.request.ServletRequestAttributes(
+                new org.springframework.mock.web.MockHttpServletRequest());
+        var tester = ExecutionGraphQlServiceTester.builder(graphQlService)
+                .configureExecutionInput((input, builder) -> builder
+                        .graphQLContext(context -> context.put("http", http)).build())
+                .build();
 
         // When the movie is imported twice through the public mutation.
         String id = tester.documentName("importMovie").variable("provider", "TMDB")

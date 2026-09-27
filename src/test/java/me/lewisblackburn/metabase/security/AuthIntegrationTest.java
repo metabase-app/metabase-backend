@@ -83,26 +83,28 @@ class AuthIntegrationTest {
 
     @Test
     void isolatesTheLimitForEveryQueryAndMutation() throws Exception {
-        Cookie csrf = csrfCookie(null);
+        // Given an authenticated account and a separate allowance for every root field.
+        var signup = signup("auth_limits", "limits@example.com", PASSWORD, csrfCookie(null))
+                .andReturn();
+        var originalSession = (MockHttpSession) signup.getRequest().getSession(false);
+        Object context = originalSession.getAttribute("SPRING_SECURITY_CONTEXT");
         for (String operation : new String[] {
                 "{ me { id } }", "{ users { id } }", "{ user(id: \"1\") { id } }",
                 "{ movies { id } }", "{ movie(id: \"1\") { id } }",
-                "mutation { importMovie(provider: TMDB, externalId: \"603\") { id } }",
+                "mutation { importMovie(provider: TMDB, externalId: \"0\") { id } }",
                 "mutation { followUser(userId: \"1\") { id } }",
                 "mutation { unfollowUser(userId: \"1\") { id } }", "mutation { logout }"}) {
             for (int call = 0; call < 3; call++) {
-                graphql(operation, Map.of(), csrf, null)
-                        .andExpect(jsonPath("$.errors[0].extensions.classification")
-                                .value("FORBIDDEN"))
+                authenticatedGraphql(operation, context)
                         .andExpect(jsonPath("$.errors[0].extensions.code").doesNotExist());
             }
-            graphql(operation, Map.of(), csrf, null)
+            authenticatedGraphql(operation, context)
                     .andExpect(jsonPath("$.errors[0].extensions.code").value("RATE_LIMITED"))
                     .andExpect(jsonPath("$.errors[0].extensions.retryAfterSeconds",
                             org.hamcrest.Matchers.greaterThan(0)));
         }
         // General limits must not consume the separate login/signup allowance.
-        signup("auth_separate", "separate@example.com", PASSWORD, csrf)
+        signup("auth_separate", "separate@example.com", PASSWORD, csrfCookie(null))
                 .andExpect(jsonPath("$.errors").doesNotExist());
     }
 
@@ -291,6 +293,17 @@ class AuthIntegrationTest {
         mockMvc.perform(get("/login")).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/auth/signup").cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private ResultActions authenticatedGraphql(String operation, Object securityContext)
+            throws Exception {
+        // A fresh session allows repeated logout calls to exercise the same IP bucket.
+        var session = new MockHttpSession();
+        session.setAttribute("SPRING_SECURITY_CONTEXT",
+                new org.springframework.security.core.context.SecurityContextImpl(
+                        ((org.springframework.security.core.context.SecurityContext) securityContext)
+                                .getAuthentication()));
+        return graphql(operation, Map.of(), csrfCookie(session), session);
     }
 
     private Cookie csrfCookie(MockHttpSession session) throws Exception {
