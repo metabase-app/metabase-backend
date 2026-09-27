@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.graphql.execution.ErrorType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -15,8 +16,9 @@ import org.springframework.web.client.RestClientResponseException;
 @Slf4j
 public class GraphQlExceptionHandlerAdvice {
 
-    @GraphQlExceptionHandler
-    public GraphQLError handleAccessDenied(AccessDeniedException exception,
+    @GraphQlExceptionHandler({AccessDeniedException.class,
+            AuthenticationCredentialsNotFoundException.class})
+    public GraphQLError handleAccessDenied(RuntimeException exception,
             DataFetchingEnvironment environment) {
         return GraphqlErrorBuilder.newError(environment)
                 .errorType(ErrorType.FORBIDDEN)

@@ -43,6 +43,49 @@ class UserRepositoryIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private UserFollowService followService;
+
+    @Test
+    void followsAndUnfollowsIdempotentlyWithoutChangingOtherRelationships() {
+        Long alice = insertUser("follow_alice");
+        Long bob = insertUser("follow_bob");
+        Long carol = insertUser("follow_carol");
+
+        followService.follow(carol, bob);
+        followService.follow(bob, alice);
+        assertThat(followService.follow(alice, bob).id()).isEqualTo(bob);
+        followService.follow(alice, bob);
+        assertThat(dsl.fetchCount(USER_FOLLOWS,
+                USER_FOLLOWS.FOLLOWER_ID.eq(alice).and(USER_FOLLOWS.FOLLOWED_ID.eq(bob))))
+                .isEqualTo(1);
+        assertThat(userRepository.findFollowing(alice, page(20, null)).getContent())
+                .extracting(User::id).containsExactly(bob);
+
+        assertThat(followService.unfollow(alice, bob).id()).isEqualTo(bob);
+        followService.unfollow(alice, bob);
+        assertThat(userRepository.findFollowing(alice, page(20, null)).getContent()).isEmpty();
+        assertThat(dsl.fetchCount(USER_FOLLOWS)).isEqualTo(2);
+    }
+
+    @Test
+    void rejectsSelfMissingAndDeletedUsersWithoutWritingRelationships() {
+        Long alice = insertUser("invalid_alice");
+        Long deleted = insertUser("deleted_target");
+        dsl.update(USERS).set(USERS.DELETED_AT, java.time.OffsetDateTime.now())
+                .where(USERS.ID.eq(deleted)).execute();
+
+        for (Long target : List.of(alice, deleted, Long.MAX_VALUE, 0L, -1L)) {
+            assertThatThrownBy(() -> followService.follow(alice, target))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> followService.unfollow(alice, target))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThatThrownBy(() -> followService.follow(deleted, alice))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(dsl.fetchCount(USER_FOLLOWS)).isZero();
+    }
+
+    @Autowired
     private DSLContext dsl;
 
     @Test

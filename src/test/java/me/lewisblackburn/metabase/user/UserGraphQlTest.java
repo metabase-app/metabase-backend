@@ -17,6 +17,7 @@ import me.lewisblackburn.metabase.config.GraphQlScalarConfiguration;
 import me.lewisblackburn.metabase.config.GraphQlPaginationConfiguration;
 import me.lewisblackburn.metabase.config.MethodSecurityConfiguration;
 import me.lewisblackburn.metabase.security.Ownership;
+import me.lewisblackburn.metabase.security.CurrentUser;
 import me.lewisblackburn.metabase.security.UserPrincipal;
 import me.lewisblackburn.metabase.user.model.User;
 import me.lewisblackburn.metabase.pagination.JooqPagination;
@@ -32,9 +33,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@GraphQlTest(UserController.class)
+@GraphQlTest({UserController.class, UserFollowController.class})
 @Import({GraphQlScalarConfiguration.class, GraphQlPaginationConfiguration.class,
-        MethodSecurityConfiguration.class, Ownership.class})
+        MethodSecurityConfiguration.class, Ownership.class, CurrentUser.class})
 class UserGraphQlTest {
 
     @Autowired
@@ -45,6 +46,55 @@ class UserGraphQlTest {
 
     @MockitoBean
     private UserRepository userRepository;
+
+    @MockitoBean
+    private UserFollowService followService;
+
+    @Test
+    void followsAndUnfollowsAsTheAuthenticatedUser() {
+        authenticate(1L, "alice", "ROLE_USER");
+        given(followService.follow(1L, 2L)).willReturn(user(2L, "bob"));
+        given(followService.unfollow(1L, 2L)).willReturn(user(2L, "bob"));
+
+        graphQlTester.document("mutation { followUser(userId: \"2\") { id username } }")
+                .execute().path("followUser.id").entity(String.class).isEqualTo("2");
+        graphQlTester.document("mutation { unfollowUser(userId: \"2\") { id } }")
+                .execute().path("unfollowUser.id").entity(String.class).isEqualTo("2");
+
+        verify(followService).follow(1L, 2L);
+        verify(followService).unfollow(1L, 2L);
+    }
+
+    @Test
+    void deniesFollowMutationsWithoutAVerifiedIdentity() {
+        for (String mutation : List.of("followUser", "unfollowUser")) {
+            assertForbidden(graphQlTester.document(
+                    "mutation { " + mutation + "(userId: \"2\") { id } }")
+                    .execute(), mutation);
+        }
+
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of()));
+        for (String mutation : List.of("followUser", "unfollowUser")) {
+            assertForbidden(graphQlTester.document(
+                    "mutation { " + mutation + "(userId: \"2\") { id } }")
+                    .execute(), mutation);
+        }
+        org.mockito.Mockito.verifyNoInteractions(followService);
+    }
+
+    @Test
+    void returnsBadRequestForInvalidFollowTargets() {
+        authenticate(1L, "alice", "ROLE_USER");
+        given(followService.follow(1L, 1L))
+                .willThrow(new IllegalArgumentException("You cannot follow or unfollow yourself"));
+        graphQlTester.document("mutation { followUser(userId: \"1\") { id } }")
+                .execute().errors().satisfy(errors -> {
+                    assertThat(errors).hasSize(1);
+                    assertThat(errors.getFirst().getErrorType().toString())
+                            .isEqualTo("BAD_REQUEST");
+                });
+    }
 
     @AfterEach
     void clearAuthentication() {
