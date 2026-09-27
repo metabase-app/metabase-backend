@@ -198,9 +198,10 @@ class UserGraphQlTest {
     }
 
     private UserPrincipal principal(Long id, String username) {
-        return UserPrincipal.builder()
+        return UserPrincipal.principalBuilder()
                 .id(id)
                 .username(username)
+                .passwordHash("")
                 .build();
     }
 
