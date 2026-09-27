@@ -26,6 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
@@ -44,11 +46,18 @@ class AuthIntegrationTest {
     @SuppressWarnings("resource")
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
 
+    @Container
+    @SuppressWarnings("resource")
+    static GenericContainer<?> redis = new GenericContainer<>("redis:8-alpine")
+            .withExposedPorts(6379);
+
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
     }
 
     @Autowired
@@ -59,10 +68,32 @@ class AuthIntegrationTest {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     @BeforeEach
     void removeTestAccounts() {
         dsl.deleteFrom(USERS).where(USERS.USERNAME.startsWith("auth_")).execute();
+        redisTemplate.delete("metabase:auth:rate-limit:127.0.0.1");
+    }
+
+    @Test
+    void rateLimitsAuthenticationBeforeCreatingAnAccount() throws Exception {
+        Cookie csrf = csrfCookie(null);
+        for (int attempt = 0; attempt < 10; attempt++) {
+            graphql(LOGIN, Map.of("input", Map.of("username", "auth_unknown",
+                    "password", PASSWORD)), csrf, null)
+                    .andExpect(jsonPath("$.errors[0].extensions.classification")
+                            .value("UNAUTHORIZED"));
+        }
+        graphql(LOGIN, Map.of("input", Map.of("username", "auth_unknown",
+                "password", PASSWORD)), csrf, null)
+                .andExpect(jsonPath("$.errors[0].extensions.code").value("RATE_LIMITED"))
+                .andExpect(jsonPath("$.errors[0].extensions.retryAfterSeconds",
+                        org.hamcrest.Matchers.greaterThan(0)));
+        signup("auth_limited", "limited@example.com", PASSWORD, csrf)
+                .andExpect(jsonPath("$.errors[0].extensions.code").value("RATE_LIMITED"));
+        assertThat(dsl.fetchCount(USERS, USERS.USERNAME.eq("auth_limited"))).isZero();
     }
 
     @Test

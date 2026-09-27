@@ -11,6 +11,8 @@ import org.springframework.security.authentication.AuthenticationCredentialsNotF
 import org.springframework.security.core.AuthenticationException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
+import java.util.Map;
+import me.lewisblackburn.metabase.security.RateLimitExceededException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -18,6 +20,16 @@ import org.springframework.web.client.RestClientResponseException;
 @ControllerAdvice
 @Slf4j
 public class GraphQlExceptionHandlerAdvice {
+
+    @GraphQlExceptionHandler
+    public GraphQLError handleRateLimit(RateLimitExceededException exception,
+            DataFetchingEnvironment environment) {
+        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.FORBIDDEN)
+                .message(exception.getMessage())
+                .extensions(Map.of("code", "RATE_LIMITED", "retryAfterSeconds",
+                        exception.getRetryAfterSeconds()))
+                .build();
+    }
 
     @GraphQlExceptionHandler
     public GraphQLError handleAuthenticationFailure(AuthenticationException exception,

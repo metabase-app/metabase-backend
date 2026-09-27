@@ -15,10 +15,12 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class AuthController {
     private final SignupService signupService;
     private final LoginService loginService;
+    private final AuthRateLimiter rateLimiter;
 
     @MutationMapping
     public AuthPayload signup(@Argument @Valid SignupRequest input,
             @ContextValue("http") ServletRequestAttributes http) {
+        rateLimiter.check(http.getRequest().getRemoteAddr());
         // Create and commit the account before saving its authenticated session.
         signupService.signup(input);
         var credentials = LoginRequest.builder()
@@ -31,6 +33,7 @@ public class AuthController {
     @MutationMapping
     public AuthPayload login(@Argument @Valid LoginRequest input,
             @ContextValue("http") ServletRequestAttributes http) {
+        rateLimiter.check(http.getRequest().getRemoteAddr());
         return loginService.login(input, http.getRequest(), http.getResponse());
     }
 

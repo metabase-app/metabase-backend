@@ -42,6 +42,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'com.bucket4j:bucket4j_jdk17-lettuce:8.16.0'
     implementation 'org.flywaydb:flyway-database-postgresql'
 
     compileOnly 'org.projectlombok:lombok'
