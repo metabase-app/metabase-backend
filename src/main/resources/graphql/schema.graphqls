@@ -37,8 +37,8 @@ type User {
   username: String!
   email: String!
   roles: [Role!]!
-  following: [User!]!
-  followers: [User!]!
+  following(first: Int! = 20, after: String): UserConnection!
+  followers(first: Int! = 20, after: String): UserConnection!
   createdAt: DateTime!
   updatedAt: DateTime!
   lastSeenAt: DateTime
@@ -48,4 +48,21 @@ type User {
 enum Role {
   ADMIN
   USER
+}
+
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
+}
+
+type PageInfo {
+  startCursor: String
+  endCursor: String
+  hasPreviousPage: Boolean!
+  hasNextPage: Boolean!
 }

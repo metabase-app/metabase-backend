@@ -2,6 +2,7 @@ package me.lewisblackburn.metabase.user.model;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import graphql.relay.Connection;
 import lombok.Builder;
 
 @Builder
@@ -10,8 +11,8 @@ public record User(
         String username,
         String email,
         List<Role> roles,
-        List<User> following,
-        List<User> followers,
+        Connection<User> following,
+        Connection<User> followers,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         OffsetDateTime lastSeenAt,
