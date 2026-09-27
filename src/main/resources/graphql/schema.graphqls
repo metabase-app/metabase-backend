@@ -35,7 +35,7 @@ type CastMember {
 type User {
   id: ID!
   username: String!
-  email: String!
+  email: String
   roles: [Role!]!
   following(first: Int! = 20, after: String): UserConnection!
   followers(first: Int! = 20, after: String): UserConnection!

@@ -13,6 +13,7 @@ import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
 import graphql.relay.Connection;
 import me.lewisblackburn.metabase.pagination.CursorPageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Controller
 @RequiredArgsConstructor
@@ -56,4 +57,9 @@ public class UserController {
                 .build());
     }
 
+    @SchemaMapping(typeName = "User", field = "email")
+    @PreAuthorize("@ownership.isOwner(#user.id())")
+    public String email(User user) {
+        return user.email();
+    }
 }

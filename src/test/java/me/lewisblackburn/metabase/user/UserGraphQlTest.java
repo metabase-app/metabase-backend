@@ -1,0 +1,231 @@
+package me.lewisblackburn.metabase.user;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+import java.util.List;
+import me.lewisblackburn.metabase.pagination.CursorPageRequest;
+import me.lewisblackburn.metabase.config.GraphQlScalarConfiguration;
+import me.lewisblackburn.metabase.config.MethodSecurityConfiguration;
+import me.lewisblackburn.metabase.security.Ownership;
+import me.lewisblackburn.metabase.security.UserPrincipal;
+import me.lewisblackburn.metabase.user.model.User;
+import graphql.relay.Connection;
+import graphql.relay.DefaultConnection;
+import graphql.relay.DefaultConnectionCursor;
+import graphql.relay.DefaultEdge;
+import graphql.relay.DefaultPageInfo;
+import me.lewisblackburn.metabase.pagination.IdCursor;
+import me.lewisblackburn.metabase.pagination.JooqPagination;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.graphql.test.tester.GraphQlTester;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+@GraphQlTest(UserController.class)
+@Import({GraphQlScalarConfiguration.class, MethodSecurityConfiguration.class, Ownership.class})
+class UserGraphQlTest {
+
+    @Autowired
+    private GraphQlTester graphQlTester;
+
+    @MockitoBean
+    private UserRepository userRepository;
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void exposesEmailOnlyToTheAuthenticatedOwner() {
+        // Given the authenticated owner has the same ID despite a changed username.
+        authenticate(1L, "previous_username", "ROLE_USER");
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+        given(userRepository.find(2L)).willReturn(user(2L, "bob"));
+
+        // When both email fields are selected.
+        var response = graphQlTester.document("""
+                { owner: user(id: "1") { email } other: user(id: "2") { email } }
+                """).execute();
+
+        // Then the owner's email is visible while only the other email field is forbidden.
+        assertForbidden(response, "other.email");
+        response.path("owner.email").entity(String.class).isEqualTo("alice@example.com");
+        response.path("other.email").valueIsNull();
+    }
+
+    @Test
+    void doesNotGiveAdminsAccessToAnotherUsersEmail() {
+        // Given an authenticated admin is viewing a different account.
+        authenticate(99L, "admin", "ROLE_ADMIN");
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+
+        // When the admin requests that user's email.
+        var response = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
+
+        // Then ownership remains required even for administrators.
+        assertForbidden(response, "user.email");
+        response.path("user.email").valueIsNull();
+    }
+
+    @Test
+    void hidesEmailWithoutAuthentication() {
+        // Given no authenticated principal is available to the field resolver.
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+
+        // When an email field is resolved directly through GraphQL.
+        var response = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
+
+        // Then the field is forbidden without exposing the underlying model value.
+        assertForbidden(response, "user.email");
+        response.path("user.email").valueIsNull();
+    }
+
+    @Test
+    void rejectsAnonymousAndUnauthenticatedPrincipalsWithMatchingNames() {
+        // Given an anonymous principal has the same name as the requested account.
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+        SecurityContextHolder.getContext().setAuthentication(new AnonymousAuthenticationToken(
+                "test", principal(1L, "alice"),
+                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
+
+        // When that account's email is requested.
+        var anonymous = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
+
+        // Then anonymous access does not count as authenticated ownership.
+        assertForbidden(anonymous, "user.email");
+        anonymous.path("user.email").valueIsNull();
+
+        // Given the matching username is present in a token that has not been authenticated.
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.unauthenticated(principal(1L, "alice"),
+                        "unused"));
+
+        // When the email is requested again, the unverified identity must also be rejected.
+        var unverified = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
+        assertForbidden(unverified, "user.email");
+        unverified.path("user.email").valueIsNull();
+    }
+
+    @Test
+    void passesPaginationArgumentsAndProtectsEmailInNestedResults() {
+        // Given Alice follows Bob, and Alice is the authenticated viewer.
+        authenticate(1L, "alice", "ROLE_USER");
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+        var cursor = new DefaultConnectionCursor(IdCursor.encode(11L));
+        Connection<User> following = new DefaultConnection<>(
+                List.of(new DefaultEdge<>(user(11L, "bob"), cursor)),
+                new DefaultPageInfo(cursor, cursor, false, true));
+        given(userRepository.findFollowing(1L, page(1, IdCursor.encode(10L))))
+                .willReturn(following);
+        given(userRepository.findFollowers(1L, page(20, null))).willReturn(JooqPagination.empty());
+
+        // When an explicit following page and the default followers page are selected.
+        var response = graphQlTester.document("""
+                {
+                  user(id: "1") {
+                    following(first: 1, after: "MTA=") {
+                      edges { cursor node { id email } }
+                      pageInfo { startCursor endCursor hasPreviousPage hasNextPage }
+                    }
+                    followers { edges { cursor node { id } } pageInfo { endCursor hasNextPage } }
+                  }
+                }
+                """).execute();
+
+        // Then pagination arguments reach the repository and nested emails remain private.
+        assertForbidden(response, "user.following.edges[0].node.email");
+        response.path("user.following.edges[0].node.id").entity(String.class).isEqualTo("11");
+        response.path("user.following.edges[0].node.email").valueIsNull();
+        response.path("user.following.edges[0].cursor").entity(String.class)
+                .isEqualTo(IdCursor.encode(11L));
+        response.path("user.following.pageInfo.startCursor").entity(String.class)
+                .isEqualTo(IdCursor.encode(11L));
+        response.path("user.following.pageInfo.hasPreviousPage").entity(Boolean.class)
+                .isEqualTo(false);
+        response.path("user.following.pageInfo.endCursor").entity(String.class)
+                .isEqualTo(IdCursor.encode(11L));
+        response.path("user.following.pageInfo.hasNextPage").entity(Boolean.class).isEqualTo(true);
+        response.path("user.followers.edges").entityList(User.class).hasSize(0);
+        verify(userRepository).findFollowing(1L, page(1, IdCursor.encode(10L)));
+        verify(userRepository).findFollowers(1L, page(20, null));
+    }
+
+    private void assertForbidden(GraphQlTester.Response response, String path) {
+        response.errors().satisfy(errors -> {
+            assertThat(errors).hasSize(1);
+            assertThat(errors.getFirst().getErrorType().toString()).isEqualTo("FORBIDDEN");
+            assertThat(errors.getFirst().getPath()).isEqualTo(path);
+        });
+    }
+
+    @Test
+    void rejectsADifferentUserIdEvenWhenTheUsernameMatches() {
+        // Given a different account's principal has the same username as the requested account.
+        authenticate(2L, "alice", "ROLE_USER");
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+
+        // When email is requested, ownership is checked using the stable ID.
+        var response = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
+
+        // Then a matching username does not grant access to another user's email.
+        assertForbidden(response, "user.email");
+        response.path("user.email").valueIsNull();
+    }
+
+    @Test
+    void rejectsAuthenticatedPrincipalsWithoutAUserId() {
+        // Given an authenticated principal contains only a matching username.
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of()));
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+
+        // When email is requested without a verified user ID.
+        var response = graphQlTester.document("{ user(id: \"1\") { email } }").execute();
+
+        // Then ownership fails closed rather than falling back to username comparison.
+        assertForbidden(response, "user.email");
+        response.path("user.email").valueIsNull();
+    }
+
+    private UserPrincipal principal(Long id, String username) {
+        return UserPrincipal.builder()
+                .id(id)
+                .username(username)
+                .build();
+    }
+
+    private void authenticate(Long id, String username, String authority) {
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(principal(id, username), null,
+                        List.of(new SimpleGrantedAuthority(authority))));
+    }
+
+    private User user(Long id, String username) {
+        return User.builder()
+                .id(id)
+                .username(username)
+                .email(username + "@example.com")
+                .roles(List.of())
+                .following(JooqPagination.empty())
+                .followers(JooqPagination.empty())
+                .build();
+    }
+
+    private CursorPageRequest page(Integer first, String after) {
+        return CursorPageRequest.builder()
+                .first(first)
+                .after(after)
+                .build();
+    }
+
+}
