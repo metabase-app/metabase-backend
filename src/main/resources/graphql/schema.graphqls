@@ -1,8 +1,11 @@
 scalar Date
+scalar DateTime
 
 type Query {
   movies: [Movie!]!
   movie(id: ID!): Movie
+  user(id: ID!): User
+  users: [User!]!
 }
 
 enum MovieProvider {
@@ -27,4 +30,22 @@ type CastMember {
   name: String!
   character: String
   order: Int
+}
+
+type User {
+  id: ID!
+  username: String!
+  email: String!
+  roles: [Role!]!
+  following: [User!]!
+  followers: [User!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  lastSeenAt: DateTime
+  deletedAt: DateTime
+}
+
+enum Role {
+  ADMIN
+  USER
 }

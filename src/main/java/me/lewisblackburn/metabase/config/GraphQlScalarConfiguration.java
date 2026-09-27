@@ -10,7 +10,7 @@ public class GraphQlScalarConfiguration {
 
     @Bean
     RuntimeWiringConfigurer dateScalarConfigurer() {
-        return wiringBuilder -> wiringBuilder.scalar(ExtendedScalars.Date);
+        return wiringBuilder -> wiringBuilder.scalar(ExtendedScalars.Date)
+                .scalar(ExtendedScalars.DateTime);
     }
 }
-
