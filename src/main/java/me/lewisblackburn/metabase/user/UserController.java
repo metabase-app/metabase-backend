@@ -15,12 +15,22 @@ import org.springframework.data.domain.Window;
 import org.springframework.data.domain.ScrollPosition;
 import org.springframework.graphql.data.pagination.Subrange;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import me.lewisblackburn.metabase.security.CurrentUser;
+import me.lewisblackburn.metabase.security.UserPrincipal;
 
 @Controller
 @PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class UserController {
     private final UserRepository userRepository;
+    private final CurrentUser currentUser;
+    private final UserLookup userLookup;
+
+    @QueryMapping
+    public User me(@AuthenticationPrincipal UserPrincipal principal) {
+        return userLookup.requireActiveUser(currentUser.requireUserId(principal));
+    }
 
     @QueryMapping
     public User user(@Argument Long id) {

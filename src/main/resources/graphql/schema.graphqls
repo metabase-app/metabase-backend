@@ -2,6 +2,7 @@ scalar Date
 scalar DateTime
 
 type Query {
+  me: User!
   movies: [Movie!]!
   movie(id: ID!): Movie
   user(id: ID!): User

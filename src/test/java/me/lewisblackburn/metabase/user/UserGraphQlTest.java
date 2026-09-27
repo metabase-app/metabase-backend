@@ -35,7 +35,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @GraphQlTest({UserController.class, UserFollowController.class})
 @Import({GraphQlScalarConfiguration.class, GraphQlPaginationConfiguration.class,
-        MethodSecurityConfiguration.class, Ownership.class, CurrentUser.class})
+        MethodSecurityConfiguration.class, Ownership.class, CurrentUser.class, UserLookup.class})
 class UserGraphQlTest {
 
     @Autowired
@@ -49,6 +49,58 @@ class UserGraphQlTest {
 
     @MockitoBean
     private UserFollowService followService;
+
+    @Test
+    void returnsMyProfileUsingTheAuthenticatedId() {
+        authenticate(1L, "old_username", "ROLE_USER");
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+        given(userRepository.findRolesByUserIds(List.of(1L)))
+                .willReturn(Map.of(1L, List.of(me.lewisblackburn.metabase.user.model.Role.USER)));
+        given(userRepository.findFollowers(eq(1L), any())).willReturn(JooqPagination.empty());
+        given(userRepository.findFollowing(eq(1L), any())).willReturn(JooqPagination.empty());
+
+        var response = graphQlTester.document("""
+                { me {
+                  id username email roles
+                  followers(first: 1) { edges { node { id } } }
+                  following(first: 1) { edges { node { id } } }
+                } }
+                """).execute();
+
+        response.path("me.id").entity(String.class).isEqualTo("1");
+        response.path("me.username").entity(String.class).isEqualTo("alice");
+        response.path("me.email").entity(String.class).isEqualTo("alice@example.com");
+        response.path("me.roles").entityList(String.class).containsExactly("USER");
+        response.path("me.followers.edges").entityList(Object.class).hasSize(0);
+        response.path("me.following.edges").entityList(Object.class).hasSize(0);
+        verify(userRepository).find(1L);
+    }
+
+    @Test
+    void deniesMeWithoutAVerifiedIdentity() {
+        assertForbidden(graphQlTester.document("{ me { id } }").execute(), "me");
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated("alice", null, List.of()));
+        assertForbidden(graphQlTester.document("{ me { id } }").execute(), "me");
+        org.mockito.Mockito.verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void rejectsMeForAMissingOrDeletedAccount() {
+        authenticate(1L, "alice", "ROLE_USER");
+        var missing = graphQlTester.document("{ me { id } }").execute();
+        missing.errors().satisfy(errors -> {
+            assertThat(errors).hasSize(1);
+            assertThat(errors.getFirst().getErrorType().toString()).isEqualTo("BAD_REQUEST");
+        });
+
+        given(userRepository.find(1L)).willReturn(User.builder()
+                .id(1L).username("alice").deletedAt(java.time.OffsetDateTime.now()).build());
+        graphQlTester.document("{ me { id } }").execute().errors().satisfy(errors -> {
+            assertThat(errors).hasSize(1);
+            assertThat(errors.getFirst().getErrorType().toString()).isEqualTo("BAD_REQUEST");
+        });
+    }
 
     @Test
     void followsAndUnfollowsAsTheAuthenticatedUser() {
