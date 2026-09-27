@@ -39,8 +39,13 @@ class MovieImportGraphQlTest {
     @Test
     void returnsImportedMovieWithCanonicalId() {
         // Given the TMDB importer saves a movie with a canonical ID distinct from its provider ID.
-        given(importService.importMovie(603L)).willReturn(new Movie(42L, "The Matrix",
-                "A computer hacker discovers the truth.", LocalDate.of(1999, 3, 31), 136));
+        given(importService.importMovie(603L)).willReturn(Movie.builder()
+                .id(42L)
+                .title("The Matrix")
+                .overview("A computer hacker discovers the truth.")
+                .releaseDate(LocalDate.of(1999, 3, 31))
+                .runtimeMinutes(136)
+                .build());
         given(movieRepository.findCastByMovieIds(List.of(42L))).willReturn(Map.of());
 
         // When a movie is imported using its provider and external ID.

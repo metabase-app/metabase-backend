@@ -67,7 +67,8 @@ class TmdbMovieImportServiceIntegrationTest {
     @Autowired
     private JooqMovieImportRepository importRepository;
 
-    private final JsonMapper jsonMapper = JsonMapper.builder().build();
+    private final JsonMapper jsonMapper = JsonMapper.builder()
+            .build();
 
     @Test
     void recordsProviderFailuresAsInternalEvents() {
@@ -256,7 +257,15 @@ class TmdbMovieImportServiceIntegrationTest {
     @Test
     void keepsDifferentProviderNamespacesSeparate() {
         // Given identical external IDs and titles can occur in different provider namespaces.
-        MovieImportData data = new MovieImportData("Shared title", null, null, null, null, null);
+        MovieImportData data =
+                MovieImportData.builder()
+                        .title("Shared title")
+                        .overview(null)
+                        .originalTitle(null)
+                        .originalLanguageCode(null)
+                        .releaseDate(null)
+                        .runtimeMinutes(null)
+                        .build();
 
         // When movie imports come from different sources or provider entity types.
         Movie first = importRepository.save("SOURCE_A", "MOVIE", "123", data);

@@ -17,8 +17,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MovieControllerTest {
 
-    private static final Movie MOVIE = new Movie(1L, "The Matrix",
-            "A computer hacker discovers the truth.", LocalDate.of(1999, 3, 31), 136);
+    private static final Movie MOVIE = Movie.builder()
+            .id(1L)
+            .title("The Matrix")
+            .overview("A computer hacker discovers the truth.")
+            .releaseDate(LocalDate.of(1999, 3, 31))
+            .runtimeMinutes(136)
+            .build();
 
     @Mock
     private MovieRepository movieRepository;
@@ -53,7 +58,12 @@ class MovieControllerTest {
     @Test
     void mapsMovieCast() {
         // Given the repository returns a cast member for the movie.
-        CastMember keanu = new CastMember(2L, "Keanu Reeves", "Neo", 0);
+        CastMember keanu = CastMember.builder()
+                .personId(2L)
+                .name("Keanu Reeves")
+                .character("Neo")
+                .order(0)
+                .build();
         given(movieRepository.findCastByMovieIds(List.of(MOVIE.id())))
                 .willReturn(Map.of(MOVIE.id(), List.of(keanu)));
 

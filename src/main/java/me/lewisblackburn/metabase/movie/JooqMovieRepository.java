@@ -27,9 +27,13 @@ public class JooqMovieRepository implements MovieRepository {
                         MOVIES.RUNTIME_MINUTES)
                 .from(MOVIES).join(ENTITIES).on(ENTITIES.ID.eq(MOVIES.ENTITY_ID))
                 .orderBy(ENTITIES.DISPLAY_NAME)
-                .fetch(record -> new Movie(record.get(ENTITIES.ID),
-                        record.get(ENTITIES.DISPLAY_NAME), record.get(ENTITIES.OVERVIEW),
-                        record.get(MOVIES.RELEASE_DATE), record.get(MOVIES.RUNTIME_MINUTES)));
+                .fetch(record -> Movie.builder()
+                        .id(record.get(ENTITIES.ID))
+                        .title(record.get(ENTITIES.DISPLAY_NAME))
+                        .overview(record.get(ENTITIES.OVERVIEW))
+                        .releaseDate(record.get(MOVIES.RELEASE_DATE))
+                        .runtimeMinutes(record.get(MOVIES.RUNTIME_MINUTES))
+                        .build());
     }
 
     @Override
@@ -39,9 +43,13 @@ public class JooqMovieRepository implements MovieRepository {
                         MOVIES.RUNTIME_MINUTES)
                 .from(MOVIES).join(ENTITIES).on(ENTITIES.ID.eq(MOVIES.ENTITY_ID))
                 .where(ENTITIES.ID.eq(id))
-                .fetchOne(record -> new Movie(record.get(ENTITIES.ID),
-                        record.get(ENTITIES.DISPLAY_NAME), record.get(ENTITIES.OVERVIEW),
-                        record.get(MOVIES.RELEASE_DATE), record.get(MOVIES.RUNTIME_MINUTES)));
+                .fetchOne(record -> Movie.builder()
+                        .id(record.get(ENTITIES.ID))
+                        .title(record.get(ENTITIES.DISPLAY_NAME))
+                        .overview(record.get(ENTITIES.OVERVIEW))
+                        .releaseDate(record.get(MOVIES.RELEASE_DATE))
+                        .runtimeMinutes(record.get(MOVIES.RUNTIME_MINUTES))
+                        .build());
     }
 
     @Override
@@ -57,8 +65,11 @@ public class JooqMovieRepository implements MovieRepository {
                 .and(CREDITS.JOB.eq(CreditJob.ACTOR.getDatabaseValue()))
                 .orderBy(CREDITS.CREDITED_ENTITY_ID, CREDITS.CREDIT_ORDER.asc().nullsLast())
                 .fetchGroups(CREDITS.CREDITED_ENTITY_ID,
-                        record -> new CastMember(record.get(CREDITS.PERSON_ID),
-                                record.get(person.DISPLAY_NAME), record.get(CREDITS.CHARACTER_NAME),
-                                record.get(CREDITS.CREDIT_ORDER)));
+                        record -> CastMember.builder()
+                                .personId(record.get(CREDITS.PERSON_ID))
+                                .name(record.get(person.DISPLAY_NAME))
+                                .character(record.get(CREDITS.CHARACTER_NAME))
+                                .order(record.get(CREDITS.CREDIT_ORDER))
+                                .build());
     }
 }

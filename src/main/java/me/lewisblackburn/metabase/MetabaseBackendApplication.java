@@ -10,4 +10,3 @@ public class MetabaseBackendApplication {
         SpringApplication.run(MetabaseBackendApplication.class, args);
     }
 }
-

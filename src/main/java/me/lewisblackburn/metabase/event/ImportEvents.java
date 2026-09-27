@@ -37,8 +37,18 @@ public class ImportEvents {
         var details = Map.of("source", source, "providerEntityType", providerType,
                 "providerEntityId", externalId, "error", error);
 
-        auditLog.record(new ActionEvent(id, id, OffsetDateTime.now(), action, EventActorType.SYSTEM,
-                null, source, EventAudience.INTERNAL, outcome, entityId,
-                JSONB.valueOf(mapper.writeValueAsString(details))));
+        auditLog.record(ActionEvent.builder()
+                .id(id)
+                .operationId(id)
+                .occurredAt(OffsetDateTime.now())
+                .action(action)
+                .actorType(EventActorType.SYSTEM)
+                .actorUserId(null)
+                .systemName(source)
+                .audience(EventAudience.INTERNAL)
+                .outcome(outcome)
+                .entityId(entityId)
+                .details(JSONB.valueOf(mapper.writeValueAsString(details)))
+                .build());
     }
 }

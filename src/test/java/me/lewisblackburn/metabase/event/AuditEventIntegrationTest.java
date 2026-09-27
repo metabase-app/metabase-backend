@@ -46,10 +46,19 @@ class AuditEventIntegrationTest {
     private PlatformTransactionManager transactions;
 
     private ActionEvent event() {
-        return new ActionEvent(UUID.randomUUID(), UUID.randomUUID(), OffsetDateTime.now(),
-                EventAction.RATING_CHANGED, EventActorType.USER, 42L, null,
-                EventAudience.USER_ACTIVITY, EventOutcome.SUCCESS, 100L,
-                JSONB.valueOf("{\"previous\":7,\"new\":9}"));
+        return ActionEvent.builder()
+                .id(UUID.randomUUID())
+                .operationId(UUID.randomUUID())
+                .occurredAt(OffsetDateTime.now())
+                .action(EventAction.RATING_CHANGED)
+                .actorType(EventActorType.USER)
+                .actorUserId(42L)
+                .systemName(null)
+                .audience(EventAudience.USER_ACTIVITY)
+                .outcome(EventOutcome.SUCCESS)
+                .entityId(100L)
+                .details(JSONB.valueOf("{\"previous\":7,\"new\":9}"))
+                .build();
     }
 
     @Test

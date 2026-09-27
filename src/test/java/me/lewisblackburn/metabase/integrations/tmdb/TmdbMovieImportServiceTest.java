@@ -39,7 +39,8 @@ class TmdbMovieImportServiceTest {
     @Mock
     private ImportEvents importEvents;
 
-    private final JsonMapper jsonMapper = JsonMapper.builder().build();
+    private final JsonMapper jsonMapper = JsonMapper.builder()
+            .build();
 
     private TmdbMovieImportService service() {
         return new TmdbMovieImportService(client, new TmdbMovieMapper(), repository, importEvents);
@@ -51,11 +52,21 @@ class TmdbMovieImportServiceTest {
         // representation.
         given(client.getMovie(603L))
                 .willReturn(jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class));
-        MovieImportData data =
-                new MovieImportData("The Matrix", "A computer hacker discovers the truth.",
-                        "The Matrix", "en", LocalDate.of(1999, 3, 30), 136);
-        Movie saved = new Movie(42L, data.title(), data.overview(), data.releaseDate(),
-                data.runtimeMinutes());
+        MovieImportData data = MovieImportData.builder()
+                .title("The Matrix")
+                .overview("A computer hacker discovers the truth.")
+                .originalTitle("The Matrix")
+                .originalLanguageCode("en")
+                .releaseDate(LocalDate.of(1999, 3, 30))
+                .runtimeMinutes(136)
+                .build();
+        Movie saved = Movie.builder()
+                .id(42L)
+                .title(data.title())
+                .overview(data.overview())
+                .releaseDate(data.releaseDate())
+                .runtimeMinutes(data.runtimeMinutes())
+                .build();
         given(repository.save("TMDB", "MOVIE", "603", data)).willReturn(saved);
 
         // When the provider movie is imported.

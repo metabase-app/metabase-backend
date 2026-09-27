@@ -18,7 +18,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 class TmdbMovieMapperTest {
 
-    private final JsonMapper jsonMapper = JsonMapper.builder().build();
+    private final JsonMapper jsonMapper = JsonMapper.builder()
+            .build();
     private final TmdbMovieMapper mapper = new TmdbMovieMapper();
 
     @Test
@@ -30,9 +31,14 @@ class TmdbMovieMapperTest {
         MovieImportData result = mapper.map(source);
 
         // Then all supported fields are mapped with the parsed release date.
-        assertThat(result).isEqualTo(
-                new MovieImportData("The Matrix", "A computer hacker discovers the truth.",
-                        "The Matrix", "en", LocalDate.of(1999, 3, 30), 136));
+        assertThat(result).isEqualTo(MovieImportData.builder()
+                .title("The Matrix")
+                .overview("A computer hacker discovers the truth.")
+                .originalTitle("The Matrix")
+                .originalLanguageCode("en")
+                .releaseDate(LocalDate.of(1999, 3, 30))
+                .runtimeMinutes(136)
+                .build());
     }
 
     @Test
@@ -45,8 +51,15 @@ class TmdbMovieMapperTest {
         MovieImportData result = mapper.map(source);
 
         // Then the title is preserved and unknown values remain absent.
-        assertThat(result)
-                .isEqualTo(new MovieImportData("The Matrix", null, null, null, null, null));
+        assertThat(result).isEqualTo(
+                MovieImportData.builder()
+                        .title("The Matrix")
+                        .overview(null)
+                        .originalTitle(null)
+                        .originalLanguageCode(null)
+                        .releaseDate(null)
+                        .runtimeMinutes(null)
+                        .build());
     }
 
     @Test
@@ -67,8 +80,15 @@ class TmdbMovieMapperTest {
         MovieImportData result = mapper.map(source);
 
         // Then blank values and zero runtime become absent without changing the source.
-        assertThat(result)
-                .isEqualTo(new MovieImportData("The Matrix", null, null, null, null, null));
+        assertThat(result).isEqualTo(
+                MovieImportData.builder()
+                        .title("The Matrix")
+                        .overview(null)
+                        .originalTitle(null)
+                        .originalLanguageCode(null)
+                        .releaseDate(null)
+                        .runtimeMinutes(null)
+                        .build());
         assertThat(source.overview()).isEqualTo(" ");
         assertThat(source.originalTitle()).isEmpty();
         assertThat(source.originalLanguage()).isEqualTo("  ");

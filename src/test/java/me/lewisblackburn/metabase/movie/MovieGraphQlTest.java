@@ -28,9 +28,19 @@ class MovieGraphQlTest {
     @Test
     void returnsMovieWithCast() {
         // Given the repository contains a movie and its cast.
-        Movie movie = new Movie(1L, "The Matrix", "A computer hacker discovers the truth.",
-                LocalDate.of(1999, 3, 31), 136);
-        CastMember castMember = new CastMember(2L, "Keanu Reeves", "Neo", 0);
+        Movie movie = Movie.builder()
+                .id(1L)
+                .title("The Matrix")
+                .overview("A computer hacker discovers the truth.")
+                .releaseDate(LocalDate.of(1999, 3, 31))
+                .runtimeMinutes(136)
+                .build();
+        CastMember castMember = CastMember.builder()
+                .personId(2L)
+                .name("Keanu Reeves")
+                .character("Neo")
+                .order(0)
+                .build();
         given(movieRepository.find(1L)).willReturn(movie);
         given(movieRepository.findCastByMovieIds(List.of(1L)))
                 .willReturn(Map.of(1L, List.of(castMember)));

@@ -4,9 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@Builder
 public record TmdbMovieDto(
         Boolean adult,
         String backdropPath,
@@ -40,6 +42,7 @@ public record TmdbMovieDto(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @Builder
     public record BelongsToCollection(
             Long id,
             String name,
@@ -50,6 +53,7 @@ public record TmdbMovieDto(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @Builder
     public record ExternalIds(
             String imdbId,
             String wikidataId,

@@ -16,10 +16,13 @@ public class TmdbMovieMapper implements MovieMapper<TmdbMovieDto> {
             throw new IllegalArgumentException("Movie title must not be blank");
         }
 
-        return new MovieImportData(source.title(), TextUtils.blankToNull(source.overview()),
-                TextUtils.blankToNull(source.originalTitle()),
-                TextUtils.blankToNull(source.originalLanguage()),
-                DateUtils.parseOptionalLocalDate(source.releaseDate()),
-                ProviderRuntimes.normalizeRuntime(source.runtime()));
+        return MovieImportData.builder()
+                .title(source.title())
+                .overview(TextUtils.blankToNull(source.overview()))
+                .originalTitle(TextUtils.blankToNull(source.originalTitle()))
+                .originalLanguageCode(TextUtils.blankToNull(source.originalLanguage()))
+                .releaseDate(DateUtils.parseOptionalLocalDate(source.releaseDate()))
+                .runtimeMinutes(ProviderRuntimes.normalizeRuntime(source.runtime()))
+                .build();
     }
 }

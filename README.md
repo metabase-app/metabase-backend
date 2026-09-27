@@ -10,4 +10,3 @@ docker compose up -d
 ```
 
 GraphiQL is available at `http://localhost:8080/graphiql` while the application is running.
-

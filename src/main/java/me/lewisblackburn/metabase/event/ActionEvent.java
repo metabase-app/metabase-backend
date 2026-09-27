@@ -5,7 +5,9 @@ import java.util.Objects;
 import java.util.UUID;
 import org.jooq.JSONB;
 import org.springframework.util.Assert;
+import lombok.Builder;
 
+@Builder
 public record ActionEvent(
         UUID id,
         UUID operationId,
