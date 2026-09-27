@@ -32,7 +32,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
 
-@SpringBootTest
+@SpringBootTest(properties = "metabase.graphql.rate-limit.max-calls=3")
 @AutoConfigureMockMvc
 @Testcontainers
 class AuthIntegrationTest {
@@ -75,6 +75,54 @@ class AuthIntegrationTest {
     void removeTestAccounts() {
         dsl.deleteFrom(USERS).where(USERS.USERNAME.startsWith("auth_")).execute();
         redisTemplate.delete("metabase:auth:rate-limit:127.0.0.1");
+        var operationKeys = redisTemplate.keys("metabase:graphql:rate-limit:*");
+        if (!operationKeys.isEmpty()) {
+            redisTemplate.delete(operationKeys);
+        }
+    }
+
+    @Test
+    void isolatesTheLimitForEveryQueryAndMutation() throws Exception {
+        Cookie csrf = csrfCookie(null);
+        for (String operation : new String[] {
+                "{ me { id } }", "{ users { id } }", "{ user(id: \"1\") { id } }",
+                "{ movies { id } }", "{ movie(id: \"1\") { id } }",
+                "mutation { importMovie(provider: TMDB, externalId: \"603\") { id } }",
+                "mutation { followUser(userId: \"1\") { id } }",
+                "mutation { unfollowUser(userId: \"1\") { id } }", "mutation { logout }"}) {
+            for (int call = 0; call < 3; call++) {
+                graphql(operation, Map.of(), csrf, null)
+                        .andExpect(jsonPath("$.errors[0].extensions.classification")
+                                .value("FORBIDDEN"))
+                        .andExpect(jsonPath("$.errors[0].extensions.code").doesNotExist());
+            }
+            graphql(operation, Map.of(), csrf, null)
+                    .andExpect(jsonPath("$.errors[0].extensions.code").value("RATE_LIMITED"))
+                    .andExpect(jsonPath("$.errors[0].extensions.retryAfterSeconds",
+                            org.hamcrest.Matchers.greaterThan(0)));
+        }
+        // General limits must not consume the separate login/signup allowance.
+        signup("auth_separate", "separate@example.com", PASSWORD, csrf)
+                .andExpect(jsonPath("$.errors").doesNotExist());
+    }
+
+    @Test
+    void aliasesShareTheFieldLimitWithoutChargingNestedFields() throws Exception {
+        var signup = signup("auth_alias", "alias@example.com", PASSWORD, csrfCookie(null))
+                .andReturn();
+        var session = (MockHttpSession) signup.getRequest().getSession(false);
+        Cookie csrf = csrfCookie(session);
+        graphql("""
+                { first: me { id email roles following(first: 1) { edges { node { id } } } }
+                  second: me { id }
+                  third: me { id } }
+                """, Map.of(), csrf, session)
+                .andExpect(jsonPath("$.errors").doesNotExist());
+        graphql("{ renamed: me { id } }", Map.of(), csrf, session)
+                .andExpect(jsonPath("$.errors[0].extensions.code").value("RATE_LIMITED"))
+                .andExpect(jsonPath("$.errors[0].path[0]").value("renamed"));
+        graphql("{ users { id } }", Map.of(), csrf, session)
+                .andExpect(jsonPath("$.errors").doesNotExist());
     }
 
     @Test

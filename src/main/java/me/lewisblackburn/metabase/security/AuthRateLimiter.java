@@ -9,13 +9,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AuthRateLimiter {
-    private final ProxyManager<String> buckets;
+    private final RedisRateLimiter limiter;
     private final BucketConfiguration limit;
 
     public AuthRateLimiter(@Lazy ProxyManager<String> buckets,
             @Value("${metabase.auth.rate-limit.max-attempts:10}") int maxAttempts,
             @Value("${metabase.auth.rate-limit.window-seconds:60}") int windowSeconds) {
-        this.buckets = buckets;
+        this.limiter = new RedisRateLimiter(buckets);
         this.limit = BucketConfiguration.builder()
                 .addLimit(bandwidth -> bandwidth.capacity(maxAttempts)
                         .refillIntervally(maxAttempts, Duration.ofSeconds(windowSeconds)))
@@ -23,11 +23,6 @@ public class AuthRateLimiter {
     }
 
     public void check(String clientIp) {
-        var bucket = buckets.builder().build("metabase:auth:rate-limit:" + clientIp, () -> limit);
-        var result = bucket.tryConsumeAndReturnRemaining(1);
-        if (!result.isConsumed()) {
-            long seconds = Duration.ofNanos(result.getNanosToWaitForRefill()).toSeconds();
-            throw new RateLimitExceededException(Math.max(1, seconds + 1));
-        }
+        limiter.check("metabase:auth:rate-limit:" + clientIp, limit);
     }
 }
