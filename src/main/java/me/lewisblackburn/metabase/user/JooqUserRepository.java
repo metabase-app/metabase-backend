@@ -44,22 +44,22 @@ public class JooqUserRepository implements UserRepository {
 
 
     @Override
-    public void follow(Long followerId, Long followedId) {
+    public boolean follow(Long followerId, Long followedId) {
         // The unique pair and doNothing make repeated follow requests safe to retry.
-        dsl.insertInto(USER_FOLLOWS)
+        return dsl.insertInto(USER_FOLLOWS)
                 .set(USER_FOLLOWS.FOLLOWER_ID, followerId)
                 .set(USER_FOLLOWS.FOLLOWED_ID, followedId)
                 .onConflict(USER_FOLLOWS.FOLLOWER_ID, USER_FOLLOWS.FOLLOWED_ID)
                 .doNothing()
-                .execute();
+                .execute() == 1;
     }
 
     @Override
-    public void unfollow(Long followerId, Long followedId) {
-        dsl.deleteFrom(USER_FOLLOWS)
+    public boolean unfollow(Long followerId, Long followedId) {
+        return dsl.deleteFrom(USER_FOLLOWS)
                 .where(USER_FOLLOWS.FOLLOWER_ID.eq(followerId))
                 .and(USER_FOLLOWS.FOLLOWED_ID.eq(followedId))
-                .execute();
+                .execute() == 1;
     }
 
     @Override

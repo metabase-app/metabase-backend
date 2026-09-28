@@ -1,0 +1,6 @@
+ALTER TABLE audit_events DROP CONSTRAINT audit_events_action_check;
+
+ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+    'FAVOURITE_ADDED', 'FAVOURITE_REMOVED', 'RATING_CHANGED',
+    'IMPORT_COMPLETED', 'IMPORT_FAILED', 'USER_FOLLOWED', 'USER_UNFOLLOWED'
+));

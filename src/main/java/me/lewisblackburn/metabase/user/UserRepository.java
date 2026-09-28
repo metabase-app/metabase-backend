@@ -13,9 +13,9 @@ public interface UserRepository {
 
     User find(Long id);
 
-    void follow(Long followerId, Long followedId);
+    boolean follow(Long followerId, Long followedId);
 
-    void unfollow(Long followerId, Long followedId);
+    boolean unfollow(Long followerId, Long followedId);
 
     Map<Long, List<Role>> findRolesByUserIds(List<Long> userIds);
 

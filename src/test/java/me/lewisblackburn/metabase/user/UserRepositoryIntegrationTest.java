@@ -1,5 +1,6 @@
 package me.lewisblackburn.metabase.user;
 
+import static me.lewisblackburn.metabase.jooq.tables.AuditEvents.AUDIT_EVENTS;
 import static me.lewisblackburn.metabase.jooq.tables.UserRoles.USER_ROLES;
 import static me.lewisblackburn.metabase.jooq.tables.UserFollows.USER_FOLLOWS;
 import static me.lewisblackburn.metabase.jooq.tables.Users.USERS;
@@ -13,6 +14,7 @@ import org.springframework.graphql.data.pagination.Subrange;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
 import org.jooq.DSLContext;
+import org.jooq.JSONB;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,10 +49,12 @@ class UserRepositoryIntegrationTest {
 
     @Test
     void followsAndUnfollowsIdempotentlyWithoutChangingOtherRelationships() {
+        // Given three users who can follow one another.
         Long alice = insertUser("follow_alice");
         Long bob = insertUser("follow_bob");
         Long carol = insertUser("follow_carol");
 
+        // When Alice follows Bob twice, only the first request changes the relationship.
         followService.follow(carol, bob);
         followService.follow(bob, alice);
         assertThat(followService.follow(alice, bob).id()).isEqualTo(bob);
@@ -60,11 +64,27 @@ class UserRepositoryIntegrationTest {
                 .isEqualTo(1);
         assertThat(userRepository.findFollowing(alice, page(20, null)).getContent())
                 .extracting(User::id).containsExactly(bob);
+        assertThat(dsl.select(AUDIT_EVENTS.ACTION, AUDIT_EVENTS.ACTOR_USER_ID,
+                        AUDIT_EVENTS.DETAILS)
+                .from(AUDIT_EVENTS)
+                .where(AUDIT_EVENTS.ACTOR_USER_ID.eq(alice))
+                .fetch()).singleElement().satisfies(event -> {
+                    assertThat(event.get(AUDIT_EVENTS.ACTION)).isEqualTo("USER_FOLLOWED");
+                    assertThat(event.get(AUDIT_EVENTS.DETAILS))
+                            .isEqualTo(JSONB.valueOf("{\"followedUserId\":" + bob + "}"));
+                });
 
+        // When Alice unfollows Bob twice, only the first request removes the relationship.
         assertThat(followService.unfollow(alice, bob).id()).isEqualTo(bob);
         followService.unfollow(alice, bob);
         assertThat(userRepository.findFollowing(alice, page(20, null)).getContent()).isEmpty();
         assertThat(dsl.fetchCount(USER_FOLLOWS)).isEqualTo(2);
+        assertThat(dsl.select(AUDIT_EVENTS.ACTION)
+                .from(AUDIT_EVENTS)
+                .where(AUDIT_EVENTS.ACTOR_USER_ID.eq(alice))
+                .orderBy(AUDIT_EVENTS.OCCURRED_AT)
+                .fetch(AUDIT_EVENTS.ACTION))
+                .containsExactly("USER_FOLLOWED", "USER_UNFOLLOWED");
     }
 
     @Test
