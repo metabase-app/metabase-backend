@@ -2,7 +2,6 @@ package me.lewisblackburn.metabase.user.model;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import org.springframework.data.domain.Window;
 import lombok.Builder;
 
 @Builder
@@ -11,8 +10,8 @@ public record User(
         String username,
         String email,
         List<Role> roles,
-        Window<User> following,
-        Window<User> followers,
+        List<User> following,
+        List<User> followers,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         OffsetDateTime lastSeenAt,

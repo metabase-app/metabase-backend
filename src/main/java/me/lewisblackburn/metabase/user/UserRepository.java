@@ -4,9 +4,6 @@ import java.util.List;
 import java.util.Map;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
-import org.springframework.data.domain.Window;
-import org.springframework.data.domain.ScrollPosition;
-import org.springframework.graphql.data.pagination.Subrange;
 
 public interface UserRepository {
     List<User> findAll();
@@ -19,7 +16,7 @@ public interface UserRepository {
 
     Map<Long, List<Role>> findRolesByUserIds(List<Long> userIds);
 
-    Window<User> findFollowers(Long userId, Subrange<ScrollPosition> page);
+    List<User> findFollowers(Long userId, int offset, int limit);
 
-    Window<User> findFollowing(Long userId, Subrange<ScrollPosition> page);
+    List<User> findFollowing(Long userId, int offset, int limit);
 }

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.List;
 import org.jooq.DSLContext;
 import org.jooq.JSONB;
 import org.junit.jupiter.api.Test;
@@ -152,6 +153,61 @@ class AuditEventIntegrationTest {
                 assertThat(result.getString(2)).isNull();
             }
         }
+    }
+
+    @Autowired
+    private UserAuditRepository userAuditRepository;
+
+    @Test
+    void pagesOnlyTheActorsUserActivityInStableNewestFirstOrder() {
+        // Given two events with the same time, an older event, and unrelated audit rows.
+        OffsetDateTime recent = OffsetDateTime.parse("2026-01-02T12:00:00Z");
+        OffsetDateTime older = recent.minusDays(1);
+        UUID firstId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID secondId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        UUID olderId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+        insertUserLog(firstId, recent, 42L, "USER_ACTIVITY");
+        insertUserLog(secondId, recent, 42L, "USER_ACTIVITY");
+        insertUserLog(olderId, older, 42L, "USER_ACTIVITY");
+        insertUserLog(UUID.randomUUID(), recent, 42L, "INTERNAL");
+        insertUserLog(UUID.randomUUID(), recent, 99L, "USER_ACTIVITY");
+
+        // When the user's logs are read at increasing offsets.
+        var first = userAuditRepository.findByActor(42L, 0, 1);
+        var second = userAuditRepository.findByActor(42L, 1, 1);
+        var third = userAuditRepository.findByActor(42L, 2, 1);
+
+        // Then each event appears once, in index order, without other audiences or actors.
+        assertThat(first).extracting(UserAuditEvent::id).containsExactly(firstId);
+        assertThat(second).extracting(UserAuditEvent::id).containsExactly(secondId);
+        assertThat(third).extracting(UserAuditEvent::id).containsExactly(olderId);
+        assertThat(userAuditRepository.findByActor(99L, 0, 20)).hasSize(1);
+    }
+
+    @Test
+    void rejectsInvalidUserLogPagination() {
+        // Given a negative offset or a limit outside the supported range.
+        // When the repository reads logs, then it rejects invalid pagination arguments.
+        for (int limit : List.of(-1, 0, 101)) {
+            assertThatThrownBy(() -> userAuditRepository.findByActor(42L, 0, limit))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThatThrownBy(() -> userAuditRepository.findByActor(42L, -1, 20))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private void insertUserLog(UUID id, OffsetDateTime at, Long actorId, String audience) {
+        dsl.insertInto(AUDIT_EVENTS)
+                .set(AUDIT_EVENTS.ID, id)
+                .set(AUDIT_EVENTS.OPERATION_ID, id)
+                .set(AUDIT_EVENTS.OCCURRED_AT, at)
+                .set(AUDIT_EVENTS.ACTION, "USER_FOLLOWED")
+                .set(AUDIT_EVENTS.ACTOR_TYPE, "USER")
+                .set(AUDIT_EVENTS.ACTOR_USER_ID, actorId)
+                .set(AUDIT_EVENTS.AUDIENCE, audience)
+                .set(AUDIT_EVENTS.OUTCOME, "SUCCESS")
+                .set(AUDIT_EVENTS.DETAILS, JSONB.valueOf("{}"))
+                .execute();
     }
 
 }

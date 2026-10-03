@@ -115,7 +115,7 @@ class AuthIntegrationTest {
         var session = (MockHttpSession) signup.getRequest().getSession(false);
         Cookie csrf = csrfCookie(session);
         graphql("""
-                { first: me { id email roles following(first: 1) { edges { node { id } } } }
+                { first: me { id email roles following(limit: 1) { id } }
                   second: me { id }
                   third: me { id } }
                 """, Map.of(), csrf, session)

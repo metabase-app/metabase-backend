@@ -12,10 +12,7 @@ import org.springframework.stereotype.Repository;
 import lombok.RequiredArgsConstructor;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
-import org.springframework.data.domain.Window;
-import org.springframework.data.domain.ScrollPosition;
-import org.springframework.graphql.data.pagination.Subrange;
-import me.lewisblackburn.metabase.pagination.JooqPagination;
+import me.lewisblackburn.metabase.pagination.Pagination;
 
 @Repository
 @RequiredArgsConstructor
@@ -78,23 +75,31 @@ public class JooqUserRepository implements UserRepository {
     }
 
     @Override
-    public Window<User> findFollowers(Long userId, Subrange<ScrollPosition> page) {
-        return JooqPagination.fetch(dsl
+    public List<User> findFollowers(Long userId, int offset, int limit) {
+        Pagination.validate(offset, limit);
+        return dsl
                 .select(USERS.ID, USERS.USERNAME, USERS.EMAIL,
                         USERS.CREATED_AT, USERS.UPDATED_AT, USERS.LAST_SEEN_AT, USERS.DELETED_AT)
                 .from(USER_FOLLOWS)
                 .join(USERS).on(USERS.ID.eq(USER_FOLLOWS.FOLLOWER_ID))
-                .where(USER_FOLLOWS.FOLLOWED_ID.eq(userId)), USERS.ID, page, this::mapUser);
+                .where(USER_FOLLOWS.FOLLOWED_ID.eq(userId))
+                .orderBy(USERS.ID)
+                .offset(offset).limit(limit)
+                .fetch(this::mapUser);
     }
 
     @Override
-    public Window<User> findFollowing(Long userId, Subrange<ScrollPosition> page) {
-        return JooqPagination.fetch(dsl
+    public List<User> findFollowing(Long userId, int offset, int limit) {
+        Pagination.validate(offset, limit);
+        return dsl
                 .select(USERS.ID, USERS.USERNAME, USERS.EMAIL,
                         USERS.CREATED_AT, USERS.UPDATED_AT, USERS.LAST_SEEN_AT, USERS.DELETED_AT)
                 .from(USER_FOLLOWS)
                 .join(USERS).on(USERS.ID.eq(USER_FOLLOWS.FOLLOWED_ID))
-                .where(USER_FOLLOWS.FOLLOWER_ID.eq(userId)), USERS.ID, page, this::mapUser);
+                .where(USER_FOLLOWS.FOLLOWER_ID.eq(userId))
+                .orderBy(USERS.ID)
+                .offset(offset).limit(limit)
+                .fetch(this::mapUser);
     }
 
     private User mapUser(Record record) {
@@ -103,8 +108,8 @@ public class JooqUserRepository implements UserRepository {
                 .username(record.get(USERS.USERNAME))
                 .email(record.get(USERS.EMAIL))
                 .roles(List.of())
-                .following(JooqPagination.empty())
-                .followers(JooqPagination.empty())
+                .following(List.of())
+                .followers(List.of())
                 .createdAt(record.get(USERS.CREATED_AT))
                 .updatedAt(record.get(USERS.UPDATED_AT))
                 .lastSeenAt(record.get(USERS.LAST_SEEN_AT))

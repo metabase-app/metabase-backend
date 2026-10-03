@@ -7,24 +7,20 @@ import me.lewisblackburn.metabase.security.GraphQlRateLimiter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.argThat;
 
 import java.util.List;
+import java.util.UUID;
+import java.time.OffsetDateTime;
+import me.lewisblackburn.metabase.event.UserAuditController;
+import me.lewisblackburn.metabase.event.UserAuditEvent;
+import me.lewisblackburn.metabase.event.UserAuditRepository;
 import java.util.Map;
-import org.springframework.data.domain.Window;
-import org.springframework.data.domain.ScrollPosition;
-import org.springframework.graphql.data.pagination.CursorStrategy;
-import org.springframework.graphql.data.pagination.Subrange;
 import me.lewisblackburn.metabase.config.GraphQlScalarConfiguration;
-import me.lewisblackburn.metabase.config.GraphQlPaginationConfiguration;
 import me.lewisblackburn.metabase.config.MethodSecurityConfiguration;
 import me.lewisblackburn.metabase.security.Ownership;
 import me.lewisblackburn.metabase.security.CurrentUser;
 import me.lewisblackburn.metabase.security.UserPrincipal;
 import me.lewisblackburn.metabase.user.model.User;
-import me.lewisblackburn.metabase.pagination.JooqPagination;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,9 +34,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@GraphQlTest({UserController.class, UserFollowController.class})
-@Import({GraphQlScalarConfiguration.class, GraphQlPaginationConfiguration.class,
-        MethodSecurityConfiguration.class, Ownership.class, CurrentUser.class, UserLookup.class})
+@GraphQlTest({UserController.class, UserFollowController.class, UserAuditController.class})
+@Import({GraphQlScalarConfiguration.class, MethodSecurityConfiguration.class,
+        Ownership.class, CurrentUser.class, UserLookup.class})
 class UserGraphQlTest {
 
     @MockitoBean
@@ -60,14 +56,14 @@ class UserGraphQlTest {
     @Autowired
     private GraphQlTester graphQlTester;
 
-    @Autowired
-    private CursorStrategy<ScrollPosition> cursorStrategy;
-
     @MockitoBean
     private UserRepository userRepository;
 
     @MockitoBean
     private UserFollowService followService;
+
+    @MockitoBean
+    private UserAuditRepository auditRepository;
 
     @Test
     void returnsMyProfileUsingTheAuthenticatedId() {
@@ -75,14 +71,14 @@ class UserGraphQlTest {
         given(userRepository.find(1L)).willReturn(user(1L, "alice"));
         given(userRepository.findRolesByUserIds(List.of(1L)))
                 .willReturn(Map.of(1L, List.of(me.lewisblackburn.metabase.user.model.Role.USER)));
-        given(userRepository.findFollowers(eq(1L), any())).willReturn(JooqPagination.empty());
-        given(userRepository.findFollowing(eq(1L), any())).willReturn(JooqPagination.empty());
+        given(userRepository.findFollowers(1L, 0, 1)).willReturn(List.of());
+        given(userRepository.findFollowing(1L, 0, 1)).willReturn(List.of());
 
         var response = graphQlTester.document("""
                 { me {
                   id username email roles
-                  followers(first: 1) { edges { node { id } } }
-                  following(first: 1) { edges { node { id } } }
+                  followers(limit: 1) { id }
+                  following(limit: 1) { id }
                 } }
                 """).execute();
 
@@ -90,8 +86,8 @@ class UserGraphQlTest {
         response.path("me.username").entity(String.class).isEqualTo("alice");
         response.path("me.email").entity(String.class).isEqualTo("alice@example.com");
         response.path("me.roles").entityList(String.class).containsExactly("USER");
-        response.path("me.followers.edges").entityList(Object.class).hasSize(0);
-        response.path("me.following.edges").entityList(Object.class).hasSize(0);
+        response.path("me.followers").entityList(Object.class).hasSize(0);
+        response.path("me.following").entityList(Object.class).hasSize(0);
         verify(userRepository).find(1L);
     }
 
@@ -165,6 +161,75 @@ class UserGraphQlTest {
                     assertThat(errors.getFirst().getErrorType().toString())
                             .isEqualTo("BAD_REQUEST");
                 });
+    }
+
+    @Test
+    void returnsPaginatedUserLogsThroughBothFieldsForTheOwner() {
+        // Given Alice owns one audit event and is the authenticated viewer.
+        authenticate(1L, "alice", "ROLE_USER");
+        given(userRepository.find(1L)).willReturn(user(1L, "alice"));
+        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        OffsetDateTime at = OffsetDateTime.parse("2026-01-02T12:00:00Z");
+        var event = UserAuditEvent.builder()
+                .id(eventId)
+                .operationId(eventId)
+                .occurredAt(at)
+                .action("USER_FOLLOWED")
+                .actorUserId(1L)
+                .outcome("SUCCESS")
+                .details("{\"followedUserId\":2}")
+                .build();
+        given(auditRepository.findByActor(1L, 0, 1)).willReturn(List.of(event));
+
+        // When the top-level query and computed User field request their own lists.
+        var response = graphQlTester.document("""
+                { userLogs(limit: 1, userId: "1") {
+                    id action actorUserId details
+                  }
+                  user(id: "1") { logs(limit: 1) {
+                    id action
+                  } }
+                }
+                """).execute();
+
+        // Then both fields expose the same event.
+        response.path("userLogs[0].id").entity(String.class)
+                .isEqualTo(eventId.toString());
+        response.path("userLogs[0].action").entity(String.class)
+                .isEqualTo("USER_FOLLOWED");
+        response.path("userLogs[0].actorUserId").entity(String.class)
+                .isEqualTo("1");
+        response.path("user.logs[0].id").entity(String.class)
+                .isEqualTo(eventId.toString());
+
+        // When the next page uses offset one, then the repository receives that offset.
+        graphQlTester.document("""
+                { userLogs(userId: "1", offset: 1, limit: 1) { id } }
+                """).execute().path("userLogs").entityList(Object.class).hasSize(0);
+        verify(auditRepository).findByActor(1L, 1, 1);
+        verify(auditRepository, org.mockito.Mockito.times(2)).findByActor(1L, 0, 1);
+    }
+
+    @Test
+    void deniesAnotherUsersLogsWithoutReadingAuditRows() {
+        // Given Alice is signed in and Bob has a user profile.
+        authenticate(1L, "alice", "ROLE_USER");
+        given(userRepository.find(2L)).willReturn(user(2L, "bob"));
+
+        // When Alice requests Bob's logs through either field.
+        var response = graphQlTester.document("""
+                { userLogs(userId: "2") { id }
+                  user(id: "2") { logs { id } }
+                }
+                """).execute();
+
+        // Then both fields are forbidden before audit storage is queried.
+        response.errors().satisfy(errors -> {
+            assertThat(errors).hasSize(2);
+            assertThat(errors).allSatisfy(error -> assertThat(error.getErrorType().toString())
+                    .isEqualTo("FORBIDDEN"));
+        });
+        org.mockito.Mockito.verifyNoInteractions(auditRepository);
     }
 
     @AfterEach
@@ -248,47 +313,27 @@ class UserGraphQlTest {
         // Given Alice follows Bob, and Alice is the authenticated viewer.
         authenticate(1L, "alice", "ROLE_USER");
         given(userRepository.find(1L)).willReturn(user(1L, "alice"));
-        String cursor = cursorStrategy.toCursor(ScrollPosition.forward(Map.of("id", 11L)));
-        var following = Window.from(List.of(user(11L, "bob")),
-                index -> ScrollPosition.forward(Map.of("id", 11L)), true);
-        given(userRepository.findFollowing(eq(1L), any())).willReturn(following);
-        given(userRepository.findFollowers(eq(1L), any())).willReturn(JooqPagination.empty());
+        var following = List.of(user(11L, "bob"));
+        given(userRepository.findFollowing(1L, 2, 1)).willReturn(following);
+        given(userRepository.findFollowers(1L, 0, 20)).willReturn(List.of());
 
         // When an explicit following page and the default followers page are selected.
         var response = graphQlTester.document("""
-                query($after: String!) {
+                {
                   user(id: "1") {
-                    following(first: 1, after: $after) {
-                      edges { cursor node { id email } }
-                      pageInfo { startCursor endCursor hasPreviousPage hasNextPage }
-                    }
-                    followers { edges { cursor node { id } } pageInfo { endCursor hasNextPage } }
+                    following(offset: 2, limit: 1) { id email }
+                    followers { id }
                   }
                 }
-                """)
-                .variable("after",
-                        cursorStrategy.toCursor(ScrollPosition.forward(Map.of("id", 10L))))
-                .execute();
+                """).execute();
 
         // Then pagination arguments reach the repository and nested emails remain private.
-        assertForbidden(response, "user.following.edges[0].node.email");
-        response.path("user.following.edges[0].node.id").entity(String.class).isEqualTo("11");
-        response.path("user.following.edges[0].node.email").valueIsNull();
-        response.path("user.following.edges[0].cursor").entity(String.class)
-                .isEqualTo(cursor);
-        response.path("user.following.pageInfo.startCursor").entity(String.class)
-                .isEqualTo(cursor);
-        response.path("user.following.pageInfo.hasPreviousPage").entity(Boolean.class)
-                .isEqualTo(false);
-        response.path("user.following.pageInfo.endCursor").entity(String.class)
-                .isEqualTo(cursor);
-        response.path("user.following.pageInfo.hasNextPage").entity(Boolean.class).isEqualTo(true);
-        response.path("user.followers.edges").entityList(User.class).hasSize(0);
-        verify(userRepository).findFollowing(eq(1L),
-                argThat(range -> range.count().orElse(20) == 1 && range.position().orElseThrow()
-                        .equals(ScrollPosition.forward(Map.of("id", 10L)))));
-        verify(userRepository).findFollowers(eq(1L),
-                argThat(range -> range.count().orElse(20) == 20 && range.position().isEmpty()));
+        assertForbidden(response, "user.following[0].email");
+        response.path("user.following[0].id").entity(String.class).isEqualTo("11");
+        response.path("user.following[0].email").valueIsNull();
+        response.path("user.followers").entityList(Object.class).hasSize(0);
+        verify(userRepository).findFollowing(1L, 2, 1);
+        verify(userRepository).findFollowers(1L, 0, 20);
     }
 
     private void assertForbidden(GraphQlTester.Response response, String path) {
@@ -348,8 +393,8 @@ class UserGraphQlTest {
                 .username(username)
                 .email(username + "@example.com")
                 .roles(List.of())
-                .following(JooqPagination.empty())
-                .followers(JooqPagination.empty())
+                .following(List.of())
+                .followers(List.of())
                 .build();
     }
 

@@ -14,9 +14,6 @@ import org.springframework.graphql.data.method.annotation.ContextValue;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
-import org.springframework.data.domain.Window;
-import org.springframework.data.domain.ScrollPosition;
-import org.springframework.graphql.data.pagination.Subrange;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import me.lewisblackburn.metabase.security.CurrentUser;
@@ -62,13 +59,15 @@ public class UserController {
     }
 
     @SchemaMapping(typeName = "User", field = "followers")
-    public Window<User> followers(User user, Subrange<ScrollPosition> page) {
-        return userRepository.findFollowers(user.id(), page);
+    public List<User> followers(User user, @Argument("offset") int offset,
+            @Argument("limit") int limit) {
+        return userRepository.findFollowers(user.id(), offset, limit);
     }
 
     @SchemaMapping(typeName = "User", field = "following")
-    public Window<User> following(User user, Subrange<ScrollPosition> page) {
-        return userRepository.findFollowing(user.id(), page);
+    public List<User> following(User user, @Argument("offset") int offset,
+            @Argument("limit") int limit) {
+        return userRepository.findFollowing(user.id(), offset, limit);
     }
 
     @SchemaMapping(typeName = "User", field = "email")

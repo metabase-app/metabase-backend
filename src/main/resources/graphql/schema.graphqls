@@ -7,6 +7,7 @@ type Query {
   movie(id: ID!): Movie
   user(id: ID!): User
   users: [User!]!
+  userLogs(userId: ID!, offset: Int! = 0, limit: Int! = 20): [AuditEvent!]!
 }
 
 enum MovieProvider {
@@ -59,8 +60,9 @@ type User {
   username: String!
   email: String
   roles: [Role!]!
-  following(first: Int! = 20, after: String): UserConnection!
-  followers(first: Int! = 20, after: String): UserConnection!
+  following(offset: Int! = 0, limit: Int! = 20): [User!]!
+  followers(offset: Int! = 0, limit: Int! = 20): [User!]!
+  logs(offset: Int! = 0, limit: Int! = 20): [AuditEvent!]!
   createdAt: DateTime!
   updatedAt: DateTime!
   lastSeenAt: DateTime
@@ -70,4 +72,15 @@ type User {
 enum Role {
   ADMIN
   USER
+}
+
+type AuditEvent {
+  id: ID!
+  operationId: ID!
+  occurredAt: DateTime!
+  action: String!
+  actorUserId: ID!
+  outcome: String!
+  entityId: ID
+  details: String!
 }
