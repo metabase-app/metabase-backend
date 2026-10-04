@@ -6,7 +6,9 @@ import org.springframework.core.io.ClassPathResource;
 
 public final class ClasspathFixtures {
 
-    private ClasspathFixtures() {}
+    private ClasspathFixtures() {
+        throw new UnsupportedOperationException("Utility class");
+    }
 
     public static String read(String path) throws IOException {
         return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);

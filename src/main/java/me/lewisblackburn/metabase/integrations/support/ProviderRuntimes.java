@@ -2,7 +2,9 @@ package me.lewisblackburn.metabase.integrations.support;
 
 public final class ProviderRuntimes {
 
-    private ProviderRuntimes() {}
+    private ProviderRuntimes() {
+        throw new UnsupportedOperationException("Utility class");
+    }
 
     /**
      * Treats missing or zero runtime as unknown and preserves positive minutes.

@@ -1,7 +1,10 @@
 package me.lewisblackburn.metabase.pagination;
 
 public final class Pagination {
-    private Pagination() {}
+
+    private Pagination() {
+        throw new UnsupportedOperationException("Utility class");
+    }
 
     public static void validate(int offset, int limit) {
         if (offset < 0 || limit < 1 || limit > 100) {
