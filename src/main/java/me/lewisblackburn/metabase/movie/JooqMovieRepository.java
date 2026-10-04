@@ -11,6 +11,7 @@ import me.lewisblackburn.metabase.credit.CreditDepartment;
 import me.lewisblackburn.metabase.credit.CreditJob;
 import me.lewisblackburn.metabase.movie.model.CastMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
+import me.lewisblackburn.metabase.pagination.Pagination;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
@@ -21,12 +22,14 @@ public class JooqMovieRepository implements MovieRepository {
     private final DSLContext dsl;
 
     @Override
-    public List<Movie> findAll() {
+    public List<Movie> findAll(int offset, int limit) {
+        Pagination.validate(offset, limit);
         return dsl
                 .select(ENTITIES.ID, ENTITIES.DISPLAY_NAME, ENTITIES.OVERVIEW, MOVIES.RELEASE_DATE,
                         MOVIES.RUNTIME_MINUTES)
                 .from(MOVIES).join(ENTITIES).on(ENTITIES.ID.eq(MOVIES.ENTITY_ID))
-                .orderBy(ENTITIES.DISPLAY_NAME)
+                .orderBy(ENTITIES.DISPLAY_NAME, ENTITIES.ID)
+                .offset(offset).limit(limit)
                 .fetch(record -> Movie.builder()
                         .id(record.get(ENTITIES.ID))
                         .title(record.get(ENTITIES.DISPLAY_NAME))

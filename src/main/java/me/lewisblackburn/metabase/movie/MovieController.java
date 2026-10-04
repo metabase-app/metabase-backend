@@ -24,9 +24,10 @@ public class MovieController {
     private final MovieRepository movieRepository;
 
     @QueryMapping
-    public List<Movie> movies(@ContextValue("http") ServletRequestAttributes http) {
+    public List<Movie> movies(@Argument("offset") int offset, @Argument("limit") int limit,
+            @ContextValue("http") ServletRequestAttributes http) {
         rateLimiter.check("movies", http.getRequest().getRemoteAddr());
-        return movieRepository.findAll();
+        return movieRepository.findAll(offset, limit);
     }
 
     @QueryMapping

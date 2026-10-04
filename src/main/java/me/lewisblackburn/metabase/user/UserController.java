@@ -42,9 +42,10 @@ public class UserController {
     }
 
     @QueryMapping
-    public List<User> users(@ContextValue("http") ServletRequestAttributes http) {
+    public List<User> users(@Argument("offset") int offset, @Argument("limit") int limit,
+            @ContextValue("http") ServletRequestAttributes http) {
         rateLimiter.check("users", http.getRequest().getRemoteAddr());
-        return userRepository.findAll();
+        return userRepository.findAll(offset, limit);
     }
 
     @BatchMapping(typeName = "User", field = "roles")

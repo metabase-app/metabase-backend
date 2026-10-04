@@ -138,6 +138,21 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
+    void paginatesAllUsersInUsernameOrder() {
+        // Given two users whose usernames sort alphabetically.
+        insertUser("zebra");
+        insertUser("aardvark");
+
+        // When users are read one row at a time.
+        var firstPage = userRepository.findAll(0, 1);
+        var secondPage = userRepository.findAll(1, 1);
+
+        // Then each page contains the expected username.
+        assertThat(firstPage).extracting(User::username).containsExactly("aardvark");
+        assertThat(secondPage).extracting(User::username).containsExactly("zebra");
+    }
+
+    @Test
     void paginatesFollowersAndFollowingInTheirRespectiveDirections() {
         // Given Alice follows Bob and Carol, Carol follows Bob, and Bob follows Carol.
         Long alice = insertUser("alice");

@@ -6,7 +6,7 @@ import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
 
 public interface UserRepository {
-    List<User> findAll();
+    List<User> findAll(int offset, int limit);
 
     User find(Long id);
 

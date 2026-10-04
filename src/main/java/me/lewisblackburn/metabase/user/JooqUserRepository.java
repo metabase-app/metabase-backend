@@ -20,12 +20,14 @@ public class JooqUserRepository implements UserRepository {
     private final DSLContext dsl;
 
     @Override
-    public List<User> findAll() {
+    public List<User> findAll(int offset, int limit) {
+        Pagination.validate(offset, limit);
         return dsl
                 .select(USERS.ID, USERS.USERNAME, USERS.EMAIL, USERS.CREATED_AT,
                         USERS.UPDATED_AT,
                         USERS.LAST_SEEN_AT, USERS.DELETED_AT)
                 .from(USERS).orderBy(USERS.USERNAME)
+                .offset(offset).limit(limit)
                 .fetch(this::mapUser);
     }
 

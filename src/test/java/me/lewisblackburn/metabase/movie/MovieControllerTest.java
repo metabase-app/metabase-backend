@@ -44,10 +44,10 @@ class MovieControllerTest {
     @Test
     void returnsMoviesFromRepository() {
         // Given the repository returns a movie.
-        given(movieRepository.findAll()).willReturn(List.of(MOVIE));
+        given(movieRepository.findAll(5, 10)).willReturn(List.of(MOVIE));
 
-        // When all movies are requested from the controller.
-        List<Movie> result = controller.movies(http);
+        // When one page of movies is requested from the controller.
+        List<Movie> result = controller.movies(5, 10, http);
 
         // Then the controller returns the repository result.
         assertThat(result).containsExactly(MOVIE);

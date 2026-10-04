@@ -92,6 +92,23 @@ class UserGraphQlTest {
     }
 
     @Test
+    void passesOffsetAndLimitToTheUserListRepository() {
+        // Given Alice is authenticated and one user matches the requested page.
+        authenticate(1L, "alice", "ROLE_USER");
+        given(userRepository.findAll(5, 10)).willReturn(List.of(user(2L, "bob")));
+
+        // When Alice requests users starting at offset five.
+        var response = graphQlTester.document("""
+                { users(offset: 5, limit: 10) { id username } }
+                """).execute();
+
+        // Then the resolver returns that page and forwards both arguments.
+        response.path("users[0].id").entity(String.class).isEqualTo("2");
+        response.path("users[0].username").entity(String.class).isEqualTo("bob");
+        verify(userRepository).findAll(5, 10);
+    }
+
+    @Test
     void deniesMeWithoutAVerifiedIdentity() {
         assertForbidden(graphQlTester.document("{ me { id } }").execute(), "me");
         SecurityContextHolder.getContext().setAuthentication(

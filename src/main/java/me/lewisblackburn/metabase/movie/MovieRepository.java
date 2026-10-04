@@ -6,7 +6,7 @@ import me.lewisblackburn.metabase.movie.model.CastMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
 
 public interface MovieRepository {
-    List<Movie> findAll();
+    List<Movie> findAll(int offset, int limit);
 
     Movie find(Long id);
 

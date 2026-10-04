@@ -56,6 +56,8 @@ class MovieRepositoryIntegrationTest {
         dsl.insertInto(MOVIES).set(MOVIES.ENTITY_ID, movieId)
                 .set(MOVIES.RELEASE_DATE, LocalDate.of(1999, 3, 31))
                 .set(MOVIES.RUNTIME_MINUTES, 136).execute();
+        Long alienId = insertEntity("MOVIE", "Alien");
+        dsl.insertInto(MOVIES).set(MOVIES.ENTITY_ID, alienId).execute();
 
         Long personId = insertEntity("PERSON", "Keanu Reeves");
         dsl.insertInto(PEOPLE).set(PEOPLE.ENTITY_ID, personId).execute();
@@ -65,13 +67,15 @@ class MovieRepositoryIntegrationTest {
                 .set(CREDITS.JOB, CreditJob.ACTOR.getDatabaseValue())
                 .set(CREDITS.CHARACTER_NAME, "Neo").set(CREDITS.CREDIT_ORDER, 0).execute();
 
-        // When movies and cast are loaded from the repository.
-        List<Movie> movies = movieRepository.findAll();
+        // When movie results are read in two pages and a movie is loaded by ID.
+        List<Movie> firstPage = movieRepository.findAll(0, 1);
+        List<Movie> secondPage = movieRepository.findAll(1, 1);
         Movie movie = movieRepository.find(movieId);
         Map<Long, List<CastMember>> cast = movieRepository.findCastByMovieIds(List.of(movieId));
 
-        // Then the repository returns the movie and its credited cast member.
-        assertThat(movies).extracting(Movie::title).containsExactly("The Matrix");
+        // Then pages are stable by title, and the movie has its credited cast member.
+        assertThat(firstPage).extracting(Movie::title).containsExactly("Alien");
+        assertThat(secondPage).extracting(Movie::title).containsExactly("The Matrix");
         assertThat(movie.releaseDate()).isEqualTo(LocalDate.of(1999, 3, 31));
         assertThat(cast.get(movieId)).extracting(CastMember::name, CastMember::character)
                 .containsExactly(assertThatTuple("Keanu Reeves", "Neo"));

@@ -3,10 +3,10 @@ scalar DateTime
 
 type Query {
   me: User!
-  movies: [Movie!]!
+  movies(offset: Int! = 0, limit: Int! = 20): [Movie!]!
   movie(id: ID!): Movie
   user(id: ID!): User
-  users: [User!]!
+  users(offset: Int! = 0, limit: Int! = 20): [User!]!
   userLogs(userId: ID!, offset: Int! = 0, limit: Int! = 20): [AuditEvent!]!
 }
 
