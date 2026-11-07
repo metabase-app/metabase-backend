@@ -13,4 +13,3 @@ query Movie($id: ID!) {
     }
   }
 }
-

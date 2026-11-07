@@ -14,7 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 @RequiredArgsConstructor
 public class ImportEvents {
 
-    private final AuditLog auditLog;
+    private final AuditEventRepository auditEventRepository;
     private final JsonMapper mapper;
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -37,7 +37,7 @@ public class ImportEvents {
         var details = Map.of("source", source, "providerEntityType", providerType,
                 "providerEntityId", externalId, "error", error);
 
-        auditLog.record(ActionEvent.builder()
+        auditEventRepository.save(ActionEvent.builder()
                 .id(id)
                 .operationId(id)
                 .occurredAt(OffsetDateTime.now())

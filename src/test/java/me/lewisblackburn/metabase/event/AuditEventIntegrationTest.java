@@ -38,7 +38,7 @@ class AuditEventIntegrationTest {
     }
 
     @Autowired
-    private AuditLog auditLog;
+    private AuditEventRepository auditEventRepository;
 
     @Autowired
     private DSLContext dsl;
@@ -69,7 +69,7 @@ class AuditEventIntegrationTest {
 
         // When its transaction records the action, the history is immediately available.
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
-            auditLog.record(event);
+            auditEventRepository.save(event);
             assertThat(dsl.fetchCount(AUDIT_EVENTS)).isEqualTo(1);
         });
 
@@ -88,7 +88,7 @@ class AuditEventIntegrationTest {
         var event = event();
 
         // When recording is attempted, then it is rejected before storing any history.
-        assertThatThrownBy(() -> auditLog.record(event))
+        assertThatThrownBy(() -> auditEventRepository.save(event))
                 .isInstanceOf(IllegalTransactionStateException.class);
         assertThat(dsl.fetchCount(AUDIT_EVENTS)).isZero();
     }
@@ -100,7 +100,7 @@ class AuditEventIntegrationTest {
 
         // When that transaction is rolled back.
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
-            auditLog.record(event);
+            auditEventRepository.save(event);
             status.setRollbackOnly();
         });
 

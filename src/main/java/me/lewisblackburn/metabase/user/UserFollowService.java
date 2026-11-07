@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import me.lewisblackburn.metabase.event.ActionEvent;
-import me.lewisblackburn.metabase.event.AuditLog;
+import me.lewisblackburn.metabase.event.AuditEventRepository;
 import me.lewisblackburn.metabase.event.EventAction;
 import me.lewisblackburn.metabase.event.EventActorType;
 import me.lewisblackburn.metabase.event.EventAudience;
@@ -21,7 +21,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class UserFollowService {
     private final UserRepository userRepository;
     private final UserLookup userLookup;
-    private final AuditLog auditLog;
+    private final AuditEventRepository auditEventRepository;
     private final JsonMapper mapper;
 
     @Transactional
@@ -44,7 +44,7 @@ public class UserFollowService {
 
     private void recordFollowEvent(Long followerId, Long followedId, EventAction action) {
         UUID id = UUID.randomUUID();
-        auditLog.record(ActionEvent.builder()
+        auditEventRepository.save(ActionEvent.builder()
                 .id(id)
                 .operationId(id)
                 .occurredAt(OffsetDateTime.now())
