@@ -43,8 +43,5 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-
       - name: Check formatting and run tests
-        run: ./gradlew spotlessCheck test
+        run: ./mvnw spotless:check test

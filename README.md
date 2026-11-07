@@ -6,7 +6,7 @@ Spring Boot backend for a connected media catalogue.
 
 ```sh
 docker compose up -d
-./gradlew test
+./mvnw test
 ```
 
 GraphiQL is available at `http://localhost:8080/graphiql` while the application is running.
