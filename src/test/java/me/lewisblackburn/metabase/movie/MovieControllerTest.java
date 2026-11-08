@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.CrewMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -93,6 +94,37 @@ class MovieControllerTest {
         Map<Movie, List<CastMember>> result = controller.cast(List.of(MOVIE));
 
         // Then the movie is associated with an empty cast list.
+        assertThat(result).containsEntry(MOVIE, List.of());
+    }
+
+    @Test
+    void mapsMovieCrew() {
+        // Given the repository returns a crew member for the movie.
+        CrewMember director = CrewMember.builder()
+                .personId(3L)
+                .name("Lana Wachowski")
+                .department("Directing")
+                .job("Director")
+                .build();
+        given(movieRepository.findCrewByMovieIds(List.of(MOVIE.id())))
+                .willReturn(Map.of(MOVIE.id(), List.of(director)));
+
+        // When the controller resolves the movie's crew.
+        Map<Movie, List<CrewMember>> result = controller.crew(List.of(MOVIE));
+
+        // Then the crew member is associated with that movie.
+        assertThat(result).containsEntry(MOVIE, List.of(director));
+    }
+
+    @Test
+    void mapsMissingCrewToEmptyList() {
+        // Given the repository returns no crew for the movie.
+        given(movieRepository.findCrewByMovieIds(List.of(MOVIE.id()))).willReturn(Map.of());
+
+        // When the controller resolves the movie's crew.
+        Map<Movie, List<CrewMember>> result = controller.crew(List.of(MOVIE));
+
+        // Then the movie is associated with an empty crew list.
         assertThat(result).containsEntry(MOVIE, List.of());
     }
 }

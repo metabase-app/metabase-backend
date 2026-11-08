@@ -12,6 +12,7 @@ import java.util.Map;
 import me.lewisblackburn.metabase.credit.CreditDepartment;
 import me.lewisblackburn.metabase.credit.CreditJob;
 import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.CrewMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
@@ -81,6 +82,27 @@ class MovieRepositoryIntegrationTest {
                 .containsExactly(assertThatTuple("Keanu Reeves", "Neo"));
     }
 
+    @Test
+    void findsMoviesAndTheirCrew() {
+        // Given a movie and a directing credit have been stored.
+        Long movieId = insertEntity("MOVIE", "The Matrix");
+        dsl.insertInto(MOVIES).set(MOVIES.ENTITY_ID, movieId).execute();
+        Long personId = insertEntity("PERSON", "Lana Wachowski");
+        dsl.insertInto(PEOPLE).set(PEOPLE.ENTITY_ID, personId).execute();
+        dsl.insertInto(CREDITS).set(CREDITS.CREDITED_ENTITY_ID, movieId)
+                .set(CREDITS.PERSON_ID, personId)
+                .set(CREDITS.DEPARTMENT, "Directing")
+                .set(CREDITS.JOB, "Director").execute();
+
+        // When the movie's crew is loaded.
+        Map<Long, List<CrewMember>> crew = movieRepository.findCrewByMovieIds(List.of(movieId));
+
+        // Then the directing credit is returned with its department and job.
+        assertThat(crew.get(movieId)).extracting(CrewMember::name, CrewMember::department,
+                CrewMember::job)
+                .containsExactly(assertThatTuple("Lana Wachowski", "Directing", "Director"));
+    }
+
     private Long insertEntity(String type, String name) {
         return dsl.insertInto(ENTITIES).set(ENTITIES.ENTITY_TYPE, type)
                 .set(ENTITIES.DISPLAY_NAME, name).returning(ENTITIES.ID).fetchOne(ENTITIES.ID);
@@ -88,5 +110,10 @@ class MovieRepositoryIntegrationTest {
 
     private org.assertj.core.groups.Tuple assertThatTuple(String first, String second) {
         return org.assertj.core.groups.Tuple.tuple(first, second);
+    }
+
+    private org.assertj.core.groups.Tuple assertThatTuple(String first, String second,
+            String third) {
+        return org.assertj.core.groups.Tuple.tuple(first, second, third);
     }
 }

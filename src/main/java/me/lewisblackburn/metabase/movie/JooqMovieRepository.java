@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import me.lewisblackburn.metabase.credit.CreditDepartment;
 import me.lewisblackburn.metabase.credit.CreditJob;
 import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.CrewMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
 import me.lewisblackburn.metabase.pagination.Pagination;
 import org.jooq.DSLContext;
@@ -73,6 +74,27 @@ public class JooqMovieRepository implements MovieRepository {
                                 .name(record.get(person.DISPLAY_NAME))
                                 .character(record.get(CREDITS.CHARACTER_NAME))
                                 .order(record.get(CREDITS.CREDIT_ORDER))
+                                .build());
+    }
+
+    @Override
+    public Map<Long, List<CrewMember>> findCrewByMovieIds(List<Long> movieIds) {
+        var person = ENTITIES.as("person");
+
+        return dsl
+                .select(CREDITS.CREDITED_ENTITY_ID, CREDITS.PERSON_ID, person.DISPLAY_NAME,
+                        CREDITS.DEPARTMENT, CREDITS.JOB)
+                .from(CREDITS).join(person).on(person.ID.eq(CREDITS.PERSON_ID))
+                .where(CREDITS.CREDITED_ENTITY_ID.in(movieIds))
+                .and(CREDITS.DEPARTMENT.ne(CreditDepartment.ACTING.getDatabaseValue())
+                        .or(CREDITS.DEPARTMENT.isNull()))
+                .orderBy(CREDITS.CREDITED_ENTITY_ID, CREDITS.JOB.asc())
+                .fetchGroups(CREDITS.CREDITED_ENTITY_ID,
+                        record -> CrewMember.builder()
+                                .personId(record.get(CREDITS.PERSON_ID))
+                                .name(record.get(person.DISPLAY_NAME))
+                                .department(record.get(CREDITS.DEPARTMENT))
+                                .job(record.get(CREDITS.JOB))
                                 .build());
     }
 }

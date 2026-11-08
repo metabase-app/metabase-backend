@@ -11,5 +11,11 @@ query Movie($id: ID!) {
       character
       order
     }
+    crew {
+      personId
+      name
+      department
+      job
+    }
   }
 }

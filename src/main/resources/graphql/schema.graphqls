@@ -46,6 +46,7 @@ type Movie {
   releaseDate: Date
   runtimeMinutes: Int
   cast: [CastMember!]!
+  crew: [CrewMember!]!
 }
 
 type CastMember {
@@ -53,6 +54,13 @@ type CastMember {
   name: String!
   character: String
   order: Int
+}
+
+type CrewMember {
+  personId: ID!
+  name: String!
+  department: String
+  job: String!
 }
 
 type User {

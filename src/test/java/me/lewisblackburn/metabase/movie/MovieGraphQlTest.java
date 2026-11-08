@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import me.lewisblackburn.metabase.config.GraphQlScalarConfiguration;
 import me.lewisblackburn.metabase.movie.model.CastMember;
+import me.lewisblackburn.metabase.movie.model.CrewMember;
 import me.lewisblackburn.metabase.movie.model.Movie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +64,14 @@ class MovieGraphQlTest {
         given(movieRepository.find(1L)).willReturn(movie);
         given(movieRepository.findCastByMovieIds(List.of(1L)))
                 .willReturn(Map.of(1L, List.of(castMember)));
+        CrewMember crewMember = CrewMember.builder()
+                .personId(3L)
+                .name("Lana Wachowski")
+                .department("Directing")
+                .job("Director")
+                .build();
+        given(movieRepository.findCrewByMovieIds(List.of(1L)))
+                .willReturn(Map.of(1L, List.of(crewMember)));
 
         // When the movie GraphQL query is executed.
         GraphQlTester.Response response =
@@ -72,6 +81,9 @@ class MovieGraphQlTest {
         response.path("movie.title").entity(String.class).isEqualTo("The Matrix")
                 .path("movie.releaseDate").entity(String.class).isEqualTo("1999-03-31")
                 .path("movie.cast[0].name").entity(String.class).isEqualTo("Keanu Reeves")
-                .path("movie.cast[0].character").entity(String.class).isEqualTo("Neo");
+                .path("movie.cast[0].character").entity(String.class).isEqualTo("Neo")
+                .path("movie.crew[0].name").entity(String.class).isEqualTo("Lana Wachowski")
+                .path("movie.crew[0].department").entity(String.class).isEqualTo("Directing")
+                .path("movie.crew[0].job").entity(String.class).isEqualTo("Director");
     }
 }
