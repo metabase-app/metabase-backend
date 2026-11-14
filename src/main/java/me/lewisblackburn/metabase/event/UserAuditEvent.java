@@ -6,13 +6,12 @@ import lombok.Builder;
 
 @Builder
 public record UserAuditEvent(
-        UUID id,
-        UUID operationId,
-        OffsetDateTime occurredAt,
-        String action,
-        Long actorUserId,
-        String outcome,
-        Long entityId,
-        String details
-) {
-}
+    UUID id,
+    UUID operationId,
+    OffsetDateTime occurredAt,
+    String action,
+    Long actorUserId,
+    String outcome,
+    Long entityId,
+    String details
+) {}

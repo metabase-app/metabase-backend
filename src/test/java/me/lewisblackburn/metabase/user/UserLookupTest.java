@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class UserLookupTest {
+
     private final UserRepository userRepository = mock(UserRepository.class);
     private final UserLookup userLookup = new UserLookup(userRepository);
 
@@ -27,31 +28,29 @@ class UserLookupTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(longs = {0, -1})
+    @ValueSource(longs = { 0, -1 })
     void rejectsInvalidIdsBeforeQueryingTheDatabase(Long userId) {
         assertThatThrownBy(() -> userLookup.requireActiveUser(userId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("User ID must be positive");
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("User ID must be positive");
         verifyNoInteractions(userRepository);
     }
 
     @Test
     void rejectsAMissingUser() {
         assertThatThrownBy(() -> userLookup.requireActiveUser(42L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("User not found");
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("User not found");
     }
 
     @Test
     void rejectsADeletedUser() {
-        when(userRepository.find(42L)).thenReturn(User.builder()
-                .id(42L)
-                .username("alice")
-                .deletedAt(OffsetDateTime.now())
-                .build());
+        when(userRepository.find(42L)).thenReturn(
+            User.builder().id(42L).username("alice").deletedAt(OffsetDateTime.now()).build()
+        );
 
         assertThatThrownBy(() -> userLookup.requireActiveUser(42L))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("User not found");
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("User not found");
     }
 }

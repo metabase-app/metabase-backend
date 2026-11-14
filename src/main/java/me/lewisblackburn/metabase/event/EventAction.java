@@ -7,5 +7,5 @@ public enum EventAction {
     IMPORT_COMPLETED,
     IMPORT_FAILED,
     USER_FOLLOWED,
-    USER_UNFOLLOWED
+    USER_UNFOLLOWED,
 }

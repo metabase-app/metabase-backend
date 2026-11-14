@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class UserLookup {
+
     private final UserRepository userRepository;
 
     /** Use for actions that require an existing account that has not been soft-deleted. */

@@ -5,8 +5,4 @@ import lombok.Builder;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Builder
-public record TmdbGenreDto(
-        Long id,
-        String name
-) {
-}
+public record TmdbGenreDto(Long id, String name) {}

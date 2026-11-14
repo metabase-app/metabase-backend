@@ -13,14 +13,20 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class LoginService {
+
     private final AuthenticationManager authenticationManager;
     private final SessionAuthenticationStrategy sessionStrategy;
     private final SecurityContextRepository securityContexts;
 
-    public AuthPayload login(LoginRequest input, HttpServletRequest request,
-            HttpServletResponse response) {
-        var token = UsernamePasswordAuthenticationToken.unauthenticated(input.username(),
-                input.password());
+    public AuthPayload login(
+        LoginRequest input,
+        HttpServletRequest request,
+        HttpServletResponse response
+    ) {
+        var token = UsernamePasswordAuthenticationToken.unauthenticated(
+            input.username(),
+            input.password()
+        );
         var authentication = authenticationManager.authenticate(token);
         sessionStrategy.onAuthentication(authentication, request, response);
 

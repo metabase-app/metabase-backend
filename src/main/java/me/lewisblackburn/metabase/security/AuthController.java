@@ -1,7 +1,7 @@
 package me.lewisblackburn.metabase.security;
 
-import jakarta.validation.Valid;
 import jakarta.servlet.ServletException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.ContextValue;
@@ -13,27 +13,32 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Controller
 @RequiredArgsConstructor
 public class AuthController {
+
     private final SignupService signupService;
     private final LoginService loginService;
     private final AuthRateLimiter authRateLimiter;
     private final GraphQlRateLimiter rateLimiter;
 
     @MutationMapping
-    public AuthPayload signup(@Argument @Valid SignupRequest input,
-            @ContextValue("http") ServletRequestAttributes http) {
+    public AuthPayload signup(
+        @Argument @Valid SignupRequest input,
+        @ContextValue("http") ServletRequestAttributes http
+    ) {
         authRateLimiter.check(http.getRequest().getRemoteAddr());
         // Create and commit the account before saving its authenticated session.
         signupService.signup(input);
         var credentials = LoginRequest.builder()
-                .username(input.username())
-                .password(input.password())
-                .build();
+            .username(input.username())
+            .password(input.password())
+            .build();
         return loginService.login(credentials, http.getRequest(), http.getResponse());
     }
 
     @MutationMapping
-    public AuthPayload login(@Argument @Valid LoginRequest input,
-            @ContextValue("http") ServletRequestAttributes http) {
+    public AuthPayload login(
+        @Argument @Valid LoginRequest input,
+        @ContextValue("http") ServletRequestAttributes http
+    ) {
         authRateLimiter.check(http.getRequest().getRemoteAddr());
         return loginService.login(input, http.getRequest(), http.getResponse());
     }
@@ -41,7 +46,7 @@ public class AuthController {
     @MutationMapping
     @PreAuthorize("isAuthenticated()")
     public boolean logout(@ContextValue("http") ServletRequestAttributes http)
-            throws ServletException {
+        throws ServletException {
         rateLimiter.check("logout", http.getRequest().getRemoteAddr());
         // Spring's servlet integration runs its configured session and CSRF logout handlers.
         http.getRequest().logout();

@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 import org.jooq.DSLContext;
 import org.jooq.JSONB;
 import org.junit.jupiter.api.Test;
@@ -18,9 +18,9 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest
 @Testcontainers
@@ -28,7 +28,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class AuditEventIntegrationTest {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
@@ -48,18 +48,18 @@ class AuditEventIntegrationTest {
 
     private ActionEvent event() {
         return ActionEvent.builder()
-                .id(UUID.randomUUID())
-                .operationId(UUID.randomUUID())
-                .occurredAt(OffsetDateTime.now())
-                .action(EventAction.RATING_CHANGED)
-                .actorType(EventActorType.USER)
-                .actorUserId(42L)
-                .systemName(null)
-                .audience(EventAudience.USER_ACTIVITY)
-                .outcome(EventOutcome.SUCCESS)
-                .entityId(100L)
-                .details(JSONB.valueOf("{\"previous\":7,\"new\":9}"))
-                .build();
+            .id(UUID.randomUUID())
+            .operationId(UUID.randomUUID())
+            .occurredAt(OffsetDateTime.now())
+            .action(EventAction.RATING_CHANGED)
+            .actorType(EventActorType.USER)
+            .actorUserId(42L)
+            .systemName(null)
+            .audience(EventAudience.USER_ACTIVITY)
+            .outcome(EventOutcome.SUCCESS)
+            .entityId(100L)
+            .details(JSONB.valueOf("{\"previous\":7,\"new\":9}"))
+            .build();
     }
 
     @Test
@@ -88,8 +88,9 @@ class AuditEventIntegrationTest {
         var event = event();
 
         // When recording is attempted, then it is rejected before storing any history.
-        assertThatThrownBy(() -> auditEventRepository.save(event))
-                .isInstanceOf(IllegalTransactionStateException.class);
+        assertThatThrownBy(() -> auditEventRepository.save(event)).isInstanceOf(
+            IllegalTransactionStateException.class
+        );
         assertThat(dsl.fetchCount(AUDIT_EVENTS)).isZero();
     }
 
@@ -113,30 +114,38 @@ class AuditEventIntegrationTest {
         // Given a database at V5 with a pending event and an already recorded copy of another
         // event.
         var flyway = org.flywaydb.core.Flyway.configure()
-                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
-                .schemas("audit_upgrade");
+            .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+            .schemas("audit_upgrade");
         flyway.target("5").load().migrate();
-        try (var connection = java.sql.DriverManager.getConnection(postgres.getJdbcUrl(),
-                postgres.getUsername(), postgres.getPassword());
-                var statement = connection.createStatement()) {
+        try (
+            var connection = java.sql.DriverManager.getConnection(
+                postgres.getJdbcUrl(),
+                postgres.getUsername(),
+                postgres.getPassword()
+            );
+            var statement = connection.createStatement()
+        ) {
             statement.execute("SET search_path TO audit_upgrade");
             statement.execute(
-                    """
-                            INSERT INTO event_outbox
-                                (id, operation_id, occurred_at, action, actor_type, system_name, audience, outcome, details)
-                            SELECT gen_random_uuid(), gen_random_uuid(), CURRENT_TIMESTAMP,
-                                   'IMPORT_COMPLETED', 'SYSTEM', 'TMDB', 'INTERNAL', 'SUCCESS', '{}'
-                            FROM generate_series(1, 2)
-                            """);
+                """
+                INSERT INTO event_outbox
+                    (id, operation_id, occurred_at, action, actor_type, system_name, audience, outcome, details)
+                SELECT gen_random_uuid(), gen_random_uuid(), CURRENT_TIMESTAMP,
+                       'IMPORT_COMPLETED', 'SYSTEM', 'TMDB', 'INTERNAL', 'SUCCESS', '{}'
+                FROM generate_series(1, 2)
+                """
+            );
             statement.execute(
-                    "INSERT INTO event_deliveries (event_id, consumer) SELECT id, 'AUDIT' FROM event_outbox");
+                "INSERT INTO event_deliveries (event_id, consumer) SELECT id, 'AUDIT' FROM event_outbox"
+            );
             statement.execute(
-                    """
-                            INSERT INTO audit_events
-                                (id, operation_id, occurred_at, action, actor_type, system_name, audience, outcome, details)
-                            SELECT id, operation_id, occurred_at, action, actor_type, system_name, audience, outcome, details
-                            FROM event_outbox LIMIT 1
-                            """);
+                """
+                INSERT INTO audit_events
+                    (id, operation_id, occurred_at, action, actor_type, system_name, audience, outcome, details)
+                SELECT id, operation_id, occurred_at, action, actor_type, system_name, audience, outcome, details
+                FROM event_outbox LIMIT 1
+                """
+            );
 
             // When the direct-audit migration is applied.
             flyway.target("latest").load().migrate();
@@ -146,8 +155,11 @@ class AuditEventIntegrationTest {
                 result.next();
                 assertThat(result.getInt(1)).isEqualTo(2);
             }
-            try (var result = statement.executeQuery(
-                    "SELECT to_regclass('audit_upgrade.event_outbox'), to_regclass('audit_upgrade.event_deliveries')")) {
+            try (
+                var result = statement.executeQuery(
+                    "SELECT to_regclass('audit_upgrade.event_outbox'), to_regclass('audit_upgrade.event_deliveries')"
+                )
+            ) {
                 result.next();
                 assertThat(result.getString(1)).isNull();
                 assertThat(result.getString(2)).isNull();
@@ -189,25 +201,26 @@ class AuditEventIntegrationTest {
         // Given a negative offset or a limit outside the supported range.
         // When the repository reads logs, then it rejects invalid pagination arguments.
         for (int limit : List.of(-1, 0, 101)) {
-            assertThatThrownBy(() -> userAuditRepository.findByActor(42L, 0, limit))
-                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> userAuditRepository.findByActor(42L, 0, limit)).isInstanceOf(
+                IllegalArgumentException.class
+            );
         }
-        assertThatThrownBy(() -> userAuditRepository.findByActor(42L, -1, 20))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> userAuditRepository.findByActor(42L, -1, 20)).isInstanceOf(
+            IllegalArgumentException.class
+        );
     }
 
     private void insertUserLog(UUID id, OffsetDateTime at, Long actorId, String audience) {
         dsl.insertInto(AUDIT_EVENTS)
-                .set(AUDIT_EVENTS.ID, id)
-                .set(AUDIT_EVENTS.OPERATION_ID, id)
-                .set(AUDIT_EVENTS.OCCURRED_AT, at)
-                .set(AUDIT_EVENTS.ACTION, "USER_FOLLOWED")
-                .set(AUDIT_EVENTS.ACTOR_TYPE, "USER")
-                .set(AUDIT_EVENTS.ACTOR_USER_ID, actorId)
-                .set(AUDIT_EVENTS.AUDIENCE, audience)
-                .set(AUDIT_EVENTS.OUTCOME, "SUCCESS")
-                .set(AUDIT_EVENTS.DETAILS, JSONB.valueOf("{}"))
-                .execute();
+            .set(AUDIT_EVENTS.ID, id)
+            .set(AUDIT_EVENTS.OPERATION_ID, id)
+            .set(AUDIT_EVENTS.OCCURRED_AT, at)
+            .set(AUDIT_EVENTS.ACTION, "USER_FOLLOWED")
+            .set(AUDIT_EVENTS.ACTOR_TYPE, "USER")
+            .set(AUDIT_EVENTS.ACTOR_USER_ID, actorId)
+            .set(AUDIT_EVENTS.AUDIENCE, audience)
+            .set(AUDIT_EVENTS.OUTCOME, "SUCCESS")
+            .set(AUDIT_EVENTS.DETAILS, JSONB.valueOf("{}"))
+            .execute();
     }
-
 }

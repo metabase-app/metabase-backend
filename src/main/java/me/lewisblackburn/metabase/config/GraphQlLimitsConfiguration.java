@@ -12,13 +12,15 @@ public class GraphQlLimitsConfiguration {
 
     @Bean
     Instrumentation maxQueryDepthInstrumentation(
-            @Value("${metabase.graphql.max-query-depth}") int maxDepth) {
+        @Value("${metabase.graphql.max-query-depth}") int maxDepth
+    ) {
         return new MaxQueryDepthInstrumentation(maxDepth);
     }
 
     @Bean
     Instrumentation maxQueryComplexityInstrumentation(
-            @Value("${metabase.graphql.max-query-complexity}") int maxComplexity) {
+        @Value("${metabase.graphql.max-query-complexity}") int maxComplexity
+    ) {
         return new MaxQueryComplexityInstrumentation(maxComplexity);
     }
 }

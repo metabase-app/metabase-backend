@@ -26,34 +26,53 @@ public class JooqMovieRepository implements MovieRepository {
     public List<Movie> findAll(int offset, int limit) {
         Pagination.validate(offset, limit);
         return dsl
-                .select(ENTITIES.ID, ENTITIES.DISPLAY_NAME, ENTITIES.OVERVIEW, MOVIES.RELEASE_DATE,
-                        MOVIES.RUNTIME_MINUTES)
-                .from(MOVIES).join(ENTITIES).on(ENTITIES.ID.eq(MOVIES.ENTITY_ID))
-                .orderBy(ENTITIES.DISPLAY_NAME, ENTITIES.ID)
-                .offset(offset).limit(limit)
-                .fetch(record -> Movie.builder()
-                        .id(record.get(ENTITIES.ID))
-                        .title(record.get(ENTITIES.DISPLAY_NAME))
-                        .overview(record.get(ENTITIES.OVERVIEW))
-                        .releaseDate(record.get(MOVIES.RELEASE_DATE))
-                        .runtimeMinutes(record.get(MOVIES.RUNTIME_MINUTES))
-                        .build());
+            .select(
+                ENTITIES.ID,
+                ENTITIES.DISPLAY_NAME,
+                ENTITIES.OVERVIEW,
+                MOVIES.RELEASE_DATE,
+                MOVIES.RUNTIME_MINUTES
+            )
+            .from(MOVIES)
+            .join(ENTITIES)
+            .on(ENTITIES.ID.eq(MOVIES.ENTITY_ID))
+            .orderBy(ENTITIES.DISPLAY_NAME, ENTITIES.ID)
+            .offset(offset)
+            .limit(limit)
+            .fetch(record ->
+                Movie.builder()
+                    .id(record.get(ENTITIES.ID))
+                    .title(record.get(ENTITIES.DISPLAY_NAME))
+                    .overview(record.get(ENTITIES.OVERVIEW))
+                    .releaseDate(record.get(MOVIES.RELEASE_DATE))
+                    .runtimeMinutes(record.get(MOVIES.RUNTIME_MINUTES))
+                    .build()
+            );
     }
 
     @Override
     public Movie find(Long id) {
         return dsl
-                .select(ENTITIES.ID, ENTITIES.DISPLAY_NAME, ENTITIES.OVERVIEW, MOVIES.RELEASE_DATE,
-                        MOVIES.RUNTIME_MINUTES)
-                .from(MOVIES).join(ENTITIES).on(ENTITIES.ID.eq(MOVIES.ENTITY_ID))
-                .where(ENTITIES.ID.eq(id))
-                .fetchOne(record -> Movie.builder()
-                        .id(record.get(ENTITIES.ID))
-                        .title(record.get(ENTITIES.DISPLAY_NAME))
-                        .overview(record.get(ENTITIES.OVERVIEW))
-                        .releaseDate(record.get(MOVIES.RELEASE_DATE))
-                        .runtimeMinutes(record.get(MOVIES.RUNTIME_MINUTES))
-                        .build());
+            .select(
+                ENTITIES.ID,
+                ENTITIES.DISPLAY_NAME,
+                ENTITIES.OVERVIEW,
+                MOVIES.RELEASE_DATE,
+                MOVIES.RUNTIME_MINUTES
+            )
+            .from(MOVIES)
+            .join(ENTITIES)
+            .on(ENTITIES.ID.eq(MOVIES.ENTITY_ID))
+            .where(ENTITIES.ID.eq(id))
+            .fetchOne(record ->
+                Movie.builder()
+                    .id(record.get(ENTITIES.ID))
+                    .title(record.get(ENTITIES.DISPLAY_NAME))
+                    .overview(record.get(ENTITIES.OVERVIEW))
+                    .releaseDate(record.get(MOVIES.RELEASE_DATE))
+                    .runtimeMinutes(record.get(MOVIES.RUNTIME_MINUTES))
+                    .build()
+            );
     }
 
     @Override
@@ -61,20 +80,28 @@ public class JooqMovieRepository implements MovieRepository {
         var person = ENTITIES.as("person");
 
         return dsl
-                .select(CREDITS.CREDITED_ENTITY_ID, CREDITS.PERSON_ID, person.DISPLAY_NAME,
-                        CREDITS.CHARACTER_NAME, CREDITS.CREDIT_ORDER)
-                .from(CREDITS).join(person).on(person.ID.eq(CREDITS.PERSON_ID))
-                .where(CREDITS.CREDITED_ENTITY_ID.in(movieIds))
-                .and(CREDITS.DEPARTMENT.eq(CreditDepartment.ACTING.getDatabaseValue()))
-                .and(CREDITS.JOB.eq(CreditJob.ACTOR.getDatabaseValue()))
-                .orderBy(CREDITS.CREDITED_ENTITY_ID, CREDITS.CREDIT_ORDER.asc().nullsLast())
-                .fetchGroups(CREDITS.CREDITED_ENTITY_ID,
-                        record -> CastMember.builder()
-                                .personId(record.get(CREDITS.PERSON_ID))
-                                .name(record.get(person.DISPLAY_NAME))
-                                .character(record.get(CREDITS.CHARACTER_NAME))
-                                .order(record.get(CREDITS.CREDIT_ORDER))
-                                .build());
+            .select(
+                CREDITS.CREDITED_ENTITY_ID,
+                CREDITS.PERSON_ID,
+                person.DISPLAY_NAME,
+                CREDITS.CHARACTER_NAME,
+                CREDITS.CREDIT_ORDER
+            )
+            .from(CREDITS)
+            .join(person)
+            .on(person.ID.eq(CREDITS.PERSON_ID))
+            .where(CREDITS.CREDITED_ENTITY_ID.in(movieIds))
+            .and(CREDITS.DEPARTMENT.eq(CreditDepartment.ACTING.getDatabaseValue()))
+            .and(CREDITS.JOB.eq(CreditJob.ACTOR.getDatabaseValue()))
+            .orderBy(CREDITS.CREDITED_ENTITY_ID, CREDITS.CREDIT_ORDER.asc().nullsLast())
+            .fetchGroups(CREDITS.CREDITED_ENTITY_ID, record ->
+                CastMember.builder()
+                    .personId(record.get(CREDITS.PERSON_ID))
+                    .name(record.get(person.DISPLAY_NAME))
+                    .character(record.get(CREDITS.CHARACTER_NAME))
+                    .order(record.get(CREDITS.CREDIT_ORDER))
+                    .build()
+            );
     }
 
     @Override
@@ -82,19 +109,30 @@ public class JooqMovieRepository implements MovieRepository {
         var person = ENTITIES.as("person");
 
         return dsl
-                .select(CREDITS.CREDITED_ENTITY_ID, CREDITS.PERSON_ID, person.DISPLAY_NAME,
-                        CREDITS.DEPARTMENT, CREDITS.JOB)
-                .from(CREDITS).join(person).on(person.ID.eq(CREDITS.PERSON_ID))
-                .where(CREDITS.CREDITED_ENTITY_ID.in(movieIds))
-                .and(CREDITS.DEPARTMENT.ne(CreditDepartment.ACTING.getDatabaseValue())
-                        .or(CREDITS.DEPARTMENT.isNull()))
-                .orderBy(CREDITS.CREDITED_ENTITY_ID, CREDITS.JOB.asc())
-                .fetchGroups(CREDITS.CREDITED_ENTITY_ID,
-                        record -> CrewMember.builder()
-                                .personId(record.get(CREDITS.PERSON_ID))
-                                .name(record.get(person.DISPLAY_NAME))
-                                .department(record.get(CREDITS.DEPARTMENT))
-                                .job(record.get(CREDITS.JOB))
-                                .build());
+            .select(
+                CREDITS.CREDITED_ENTITY_ID,
+                CREDITS.PERSON_ID,
+                person.DISPLAY_NAME,
+                CREDITS.DEPARTMENT,
+                CREDITS.JOB
+            )
+            .from(CREDITS)
+            .join(person)
+            .on(person.ID.eq(CREDITS.PERSON_ID))
+            .where(CREDITS.CREDITED_ENTITY_ID.in(movieIds))
+            .and(
+                CREDITS.DEPARTMENT.ne(CreditDepartment.ACTING.getDatabaseValue()).or(
+                    CREDITS.DEPARTMENT.isNull()
+                )
+            )
+            .orderBy(CREDITS.CREDITED_ENTITY_ID, CREDITS.JOB.asc())
+            .fetchGroups(CREDITS.CREDITED_ENTITY_ID, record ->
+                CrewMember.builder()
+                    .personId(record.get(CREDITS.PERSON_ID))
+                    .name(record.get(person.DISPLAY_NAME))
+                    .department(record.get(CREDITS.DEPARTMENT))
+                    .job(record.get(CREDITS.JOB))
+                    .build()
+            );
     }
 }

@@ -7,7 +7,6 @@ import lombok.Builder;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Builder
 public record TmdbProductionCountryDto(
-        @JsonProperty("iso_3166_1") String countryCode,
-        String name
-) {
-}
+    @JsonProperty("iso_3166_1") String countryCode,
+    String name
+) {}

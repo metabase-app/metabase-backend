@@ -11,7 +11,7 @@ class ProviderRuntimesTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(ints = {0})
+    @ValueSource(ints = { 0 })
     void returnsNullForUnknownRuntime(Integer runtime) {
         // Given a provider supplies a missing or zero runtime.
 
@@ -23,7 +23,7 @@ class ProviderRuntimesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 136, Integer.MAX_VALUE})
+    @ValueSource(ints = { 1, 136, Integer.MAX_VALUE })
     void preservesPositiveRuntime(Integer runtime) {
         // Given a provider supplies a positive runtime in minutes.
 
@@ -35,13 +35,13 @@ class ProviderRuntimesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {-1, -136, Integer.MIN_VALUE})
+    @ValueSource(ints = { -1, -136, Integer.MIN_VALUE })
     void rejectsNegativeRuntime(Integer runtime) {
         // Given a provider supplies an invalid negative runtime.
 
         // When normalization is attempted, then the invalid runtime is rejected.
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> ProviderRuntimes.normalizeRuntime(runtime))
-                .withMessage("Runtime must not be negative");
+            .isThrownBy(() -> ProviderRuntimes.normalizeRuntime(runtime))
+            .withMessage("Runtime must not be negative");
     }
 }

@@ -13,8 +13,8 @@ public class TmdbConfiguration {
     @Bean
     RestClient tmdbRestClient(TmdbProperties properties) {
         return RestClient.builder()
-                .baseUrl(properties.baseUrl().toString())
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.accessToken())
-                .build();
+            .baseUrl(properties.baseUrl().toString())
+            .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.accessToken())
+            .build();
     }
 }

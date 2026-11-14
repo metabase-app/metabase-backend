@@ -10,7 +10,7 @@ class TextUtilsTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" ", "\t\n", "\u2003"})
+    @ValueSource(strings = { " ", "\t\n", "\u2003" })
     void returnsNullForMissingOrBlankText(String value) {
         // Given the input contains missing, empty or whitespace-only text.
 
@@ -22,7 +22,7 @@ class TextUtilsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"The Matrix", "en", "  Original title  ", "Line one\nLine two"})
+    @ValueSource(strings = { "The Matrix", "en", "  Original title  ", "Line one\nLine two" })
     void preservesNonblankText(String value) {
         // Given the input contains nonblank text that may contain whitespace.
 

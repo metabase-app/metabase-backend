@@ -6,9 +6,4 @@ import lombok.Builder;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Builder
-public record TmdbCreditsDto(
-        Long id,
-        List<TmdbCastMemberDto> cast,
-        List<TmdbCrewMemberDto> crew
-) {
-}
+public record TmdbCreditsDto(Long id, List<TmdbCastMemberDto> cast, List<TmdbCrewMemberDto> crew) {}

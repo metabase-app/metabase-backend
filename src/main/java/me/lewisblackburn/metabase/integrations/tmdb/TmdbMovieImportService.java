@@ -27,18 +27,31 @@ public class TmdbMovieImportService implements MovieImportService<Long> {
         Assert.isTrue(externalId != null && externalId > 0, "TMDB movie ID must be positive");
         try {
             TmdbMovieDto movie = client.getMovie(externalId);
-            Assert.state(movie != null && externalId.equals(movie.id()),
-                    "TMDB returned an unexpected movie");
+            Assert.state(
+                movie != null && externalId.equals(movie.id()),
+                "TMDB returned an unexpected movie"
+            );
             MovieImportData data = mapper.map(movie);
-            return repository.save(MovieProvider.TMDB.getDatabaseValue(),
-                    TmdbEntityType.MOVIE.getDatabaseValue(), externalId.toString(), data);
+            return repository.save(
+                MovieProvider.TMDB.getDatabaseValue(),
+                TmdbEntityType.MOVIE.getDatabaseValue(),
+                externalId.toString(),
+                data
+            );
         } catch (RuntimeException failure) {
             try {
-                importEvents.failed(MovieProvider.TMDB.getDatabaseValue(),
-                        TmdbEntityType.MOVIE.getDatabaseValue(), externalId.toString(), failure);
+                importEvents.failed(
+                    MovieProvider.TMDB.getDatabaseValue(),
+                    TmdbEntityType.MOVIE.getDatabaseValue(),
+                    externalId.toString(),
+                    failure
+                );
             } catch (RuntimeException recordingFailure) {
-                log.error("Could not record TMDB import failure for movie {} ({})", externalId,
-                        recordingFailure.getClass().getSimpleName());
+                log.error(
+                    "Could not record TMDB import failure for movie {} ({})",
+                    externalId,
+                    recordingFailure.getClass().getSimpleName()
+                );
             }
             throw failure;
         }

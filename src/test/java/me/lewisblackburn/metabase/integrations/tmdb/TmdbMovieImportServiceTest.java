@@ -39,8 +39,7 @@ class TmdbMovieImportServiceTest {
     @Mock
     private ImportEvents importEvents;
 
-    private final JsonMapper jsonMapper = JsonMapper.builder()
-            .build();
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     private TmdbMovieImportService service() {
         return new TmdbMovieImportService(client, new TmdbMovieMapper(), repository, importEvents);
@@ -50,23 +49,24 @@ class TmdbMovieImportServiceTest {
     void mapsAndSavesMovieWithProviderIdentity() throws IOException {
         // Given TMDB supplies a movie and the repository returns its saved canonical
         // representation.
-        given(client.getMovie(603L))
-                .willReturn(jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class));
+        given(client.getMovie(603L)).willReturn(
+            jsonMapper.readValue(read("tmdb/movie-603.json"), TmdbMovieDto.class)
+        );
         MovieImportData data = MovieImportData.builder()
-                .title("The Matrix")
-                .overview("A computer hacker discovers the truth.")
-                .originalTitle("The Matrix")
-                .originalLanguageCode("en")
-                .releaseDate(LocalDate.of(1999, 3, 30))
-                .runtimeMinutes(136)
-                .build();
+            .title("The Matrix")
+            .overview("A computer hacker discovers the truth.")
+            .originalTitle("The Matrix")
+            .originalLanguageCode("en")
+            .releaseDate(LocalDate.of(1999, 3, 30))
+            .runtimeMinutes(136)
+            .build();
         Movie saved = Movie.builder()
-                .id(42L)
-                .title(data.title())
-                .overview(data.overview())
-                .releaseDate(data.releaseDate())
-                .runtimeMinutes(data.runtimeMinutes())
-                .build();
+            .id(42L)
+            .title(data.title())
+            .overview(data.overview())
+            .releaseDate(data.releaseDate())
+            .runtimeMinutes(data.runtimeMinutes())
+            .build();
         given(repository.save("TMDB", "MOVIE", "603", data)).willReturn(saved);
 
         // When the provider movie is imported.
@@ -80,26 +80,29 @@ class TmdbMovieImportServiceTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(longs = {0, -1})
+    @ValueSource(longs = { 0, -1 })
     void rejectsInvalidIdsBeforeFetching(Long id) {
         // Given an absent or nonpositive provider ID.
 
         // When importing is attempted, then validation fails before any external or database calls.
-        assertThatIllegalArgumentException().isThrownBy(() -> service().importMovie(id))
-                .withMessage("TMDB movie ID must be positive");
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> service().importMovie(id))
+            .withMessage("TMDB movie ID must be positive");
         verifyNoInteractions(client, repository, importEvents);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"null", "{\"id\":604,\"title\":\"Wrong movie\"}",
-            "{\"title\":\"Missing ID\"}"})
+    @ValueSource(
+        strings = { "null", "{\"id\":604,\"title\":\"Wrong movie\"}", "{\"title\":\"Missing ID\"}" }
+    )
     void rejectsUnexpectedProviderResponses(String payload) {
         // Given TMDB returns no movie or a movie without the requested identity.
         given(client.getMovie(603L)).willReturn(jsonMapper.readValue(payload, TmdbMovieDto.class));
 
         // When importing is attempted, then the response is rejected before saving.
-        assertThatIllegalStateException().isThrownBy(() -> service().importMovie(603L))
-                .withMessage("TMDB returned an unexpected movie");
+        assertThatIllegalStateException()
+            .isThrownBy(() -> service().importMovie(603L))
+            .withMessage("TMDB returned an unexpected movie");
         verifyNoInteractions(repository);
     }
 
@@ -120,8 +123,9 @@ class TmdbMovieImportServiceTest {
         // Given both the provider and audit storage are unavailable.
         var failure = new ResourceAccessException("Connection failed");
         given(client.getMovie(603L)).willThrow(failure);
-        doThrow(new IllegalStateException("Database unavailable")).when(importEvents).failed("TMDB",
-                "MOVIE", "603", failure);
+        doThrow(new IllegalStateException("Database unavailable"))
+            .when(importEvents)
+            .failed("TMDB", "MOVIE", "603", failure);
 
         // When the import fails, then its original failure remains the reported cause.
         assertThatThrownBy(() -> service().importMovie(603L)).isSameAs(failure);
@@ -132,11 +136,13 @@ class TmdbMovieImportServiceTest {
     void doesNotSaveInvalidMovieData() {
         // Given the provider returns the expected identity but an invalid blank title.
         given(client.getMovie(603L)).willReturn(
-                jsonMapper.readValue("{\"id\":603,\"title\":\" \"}", TmdbMovieDto.class));
+            jsonMapper.readValue("{\"id\":603,\"title\":\" \"}", TmdbMovieDto.class)
+        );
 
         // When mapping rejects the payload, then no data is saved.
-        assertThatIllegalArgumentException().isThrownBy(() -> service().importMovie(603L))
-                .withMessage("Movie title must not be blank");
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> service().importMovie(603L))
+            .withMessage("Movie title must not be blank");
         verifyNoInteractions(repository);
     }
 }

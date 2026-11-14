@@ -42,13 +42,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
 
         if (entityId == null) {
             entityId = createMovieEntity(data);
-            saveProviderMapping(
-                sourceId,
-                entityId,
-                providerEntityType,
-                externalId,
-                now
-            );
+            saveProviderMapping(sourceId, entityId, providerEntityType, externalId, now);
         } else {
             updateMovieEntity(entityId, data, now);
             touchProviderMapping(mapping, now);
@@ -56,12 +50,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
 
         upsertMovie(entityId, data);
 
-        importEvents.completed(
-            sourceName,
-            providerEntityType,
-            externalId,
-            entityId
-        );
+        importEvents.completed(sourceName, providerEntityType, externalId, entityId);
         return movies.find(entityId);
     }
 
@@ -72,10 +61,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
         MovieImportData data
     ) {
         Assert.hasText(sourceName, "Source name must not be blank");
-        Assert.hasText(
-            providerEntityType,
-            "Provider entity type must not be blank"
-        );
+        Assert.hasText(providerEntityType, "Provider entity type must not be blank");
         Assert.hasText(externalId, "External movie ID must not be blank");
         Assert.notNull(data, "Movie import data must not be null");
     }
@@ -85,10 +71,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
         return dsl
             .insertInto(DATA_SOURCES)
             .set(DATA_SOURCES.NAME, sourceName)
-            .set(
-                DATA_SOURCES.SOURCE_TYPE,
-                DataSourceType.API.getDatabaseValue()
-            )
+            .set(DATA_SOURCES.SOURCE_TYPE, DataSourceType.API.getDatabaseValue())
             .onConflict(DATA_SOURCES.NAME)
             .doUpdate()
             .set(DATA_SOURCES.NAME, sourceName)
@@ -97,17 +80,9 @@ public class JooqMovieImportRepository implements MovieImportRepository {
             .getId();
     }
 
-    private Condition providerMapping(
-        Long sourceId,
-        String providerEntityType,
-        String externalId
-    ) {
+    private Condition providerMapping(Long sourceId, String providerEntityType, String externalId) {
         return PROVIDER_ENTITY_MAPPINGS.DATA_SOURCE_ID.eq(sourceId)
-            .and(
-                PROVIDER_ENTITY_MAPPINGS.PROVIDER_ENTITY_TYPE.eq(
-                    providerEntityType
-                )
-            )
+            .and(PROVIDER_ENTITY_MAPPINGS.PROVIDER_ENTITY_TYPE.eq(providerEntityType))
             .and(PROVIDER_ENTITY_MAPPINGS.PROVIDER_ENTITY_ID.eq(externalId));
     }
 
@@ -141,20 +116,13 @@ public class JooqMovieImportRepository implements MovieImportRepository {
         dsl.insertInto(PROVIDER_ENTITY_MAPPINGS)
             .set(PROVIDER_ENTITY_MAPPINGS.DATA_SOURCE_ID, sourceId)
             .set(PROVIDER_ENTITY_MAPPINGS.ENTITY_ID, entityId)
-            .set(
-                PROVIDER_ENTITY_MAPPINGS.PROVIDER_ENTITY_TYPE,
-                providerEntityType
-            )
+            .set(PROVIDER_ENTITY_MAPPINGS.PROVIDER_ENTITY_TYPE, providerEntityType)
             .set(PROVIDER_ENTITY_MAPPINGS.PROVIDER_ENTITY_ID, externalId)
             .set(PROVIDER_ENTITY_MAPPINGS.LAST_SEEN_AT, now)
             .execute();
     }
 
-    private void updateMovieEntity(
-        Long entityId,
-        MovieImportData data,
-        OffsetDateTime now
-    ) {
+    private void updateMovieEntity(Long entityId, MovieImportData data, OffsetDateTime now) {
         int updated = dsl
             .update(ENTITIES)
             .set(ENTITIES.DISPLAY_NAME, data.title())
@@ -167,10 +135,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
                 )
             )
             .execute();
-        Assert.state(
-            updated == 1,
-            "Provider mapping does not reference a movie"
-        );
+        Assert.state(updated == 1, "Provider mapping does not reference a movie");
     }
 
     private void touchProviderMapping(Condition mapping, OffsetDateTime now) {

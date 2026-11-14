@@ -1,6 +1,5 @@
 package me.lewisblackburn.metabase.config;
 
-import java.time.Duration;
 import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.redis.lettuce.Bucket4jLettuce;
@@ -9,6 +8,7 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
+import java.time.Duration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -16,6 +16,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 
 @Configuration
 public class RateLimitConfiguration {
+
     @Bean(destroyMethod = "close")
     @Lazy
     StatefulRedisConnection<String, byte[]> rateLimitConnection(LettuceConnectionFactory factory) {
@@ -27,10 +28,14 @@ public class RateLimitConfiguration {
     @Bean(destroyMethod = "")
     @Lazy
     ProxyManager<String> rateLimitBuckets(
-            StatefulRedisConnection<String, byte[]> rateLimitConnection) {
+        StatefulRedisConnection<String, byte[]> rateLimitConnection
+    ) {
         return Bucket4jLettuce.casBasedBuilder(rateLimitConnection)
-                .expirationAfterWrite(ExpirationAfterWriteStrategy
-                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofSeconds(10)))
-                .build();
+            .expirationAfterWrite(
+                ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(
+                    Duration.ofSeconds(10)
+                )
+            )
+            .build();
     }
 }

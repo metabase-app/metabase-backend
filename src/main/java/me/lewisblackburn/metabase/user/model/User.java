@@ -6,16 +6,14 @@ import lombok.Builder;
 
 @Builder
 public record User(
-        Long id,
-        String username,
-        String email,
-        List<Role> roles,
-        List<User> following,
-        List<User> followers,
-        OffsetDateTime createdAt,
-        OffsetDateTime updatedAt,
-        OffsetDateTime lastSeenAt,
-        OffsetDateTime deletedAt
-) {
-
-}
+    Long id,
+    String username,
+    String email,
+    List<Role> roles,
+    List<User> following,
+    List<User> followers,
+    OffsetDateTime createdAt,
+    OffsetDateTime updatedAt,
+    OffsetDateTime lastSeenAt,
+    OffsetDateTime deletedAt
+) {}

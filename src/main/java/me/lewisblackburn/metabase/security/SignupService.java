@@ -1,7 +1,7 @@
 package me.lewisblackburn.metabase.security;
 
-import static me.lewisblackburn.metabase.jooq.tables.Users.USERS;
 import static me.lewisblackburn.metabase.jooq.tables.UserRoles.USER_ROLES;
+import static me.lewisblackburn.metabase.jooq.tables.Users.USERS;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class SignupService {
+
     private final DSLContext dsl;
     private final PasswordEncoder passwordEncoder;
 
@@ -29,20 +30,20 @@ public class SignupService {
         String email = request.email().strip().toLowerCase(Locale.ROOT);
 
         try {
-            Long userId = dsl.insertInto(USERS)
-                    .set(USERS.USERNAME, request.username())
-                    .set(USERS.DISPLAY_NAME, request.username())
-                    .set(USERS.EMAIL, email)
-                    .set(USERS.PASSWORD_HASH, passwordHash)
-                    .returningResult(USERS.ID)
-                    .fetchSingle(USERS.ID);
+            Long userId = dsl
+                .insertInto(USERS)
+                .set(USERS.USERNAME, request.username())
+                .set(USERS.DISPLAY_NAME, request.username())
+                .set(USERS.EMAIL, email)
+                .set(USERS.PASSWORD_HASH, passwordHash)
+                .returningResult(USERS.ID)
+                .fetchSingle(USERS.ID);
 
             // Account and default role are created in the same transaction.
             dsl.insertInto(USER_ROLES)
-                    .set(USER_ROLES.USER_ID, userId)
-                    .set(USER_ROLES.ROLE, Role.USER.name())
-                    .execute();
-
+                .set(USER_ROLES.USER_ID, userId)
+                .set(USER_ROLES.ROLE, Role.USER.name())
+                .execute();
         } catch (DuplicateKeyException exception) {
             throw new IllegalArgumentException("Username or email is already in use");
         }

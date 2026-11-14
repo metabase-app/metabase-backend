@@ -19,6 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 @RequiredArgsConstructor
 public class UserFollowService {
+
     private final UserRepository userRepository;
     private final UserLookup userLookup;
     private final AuditEventRepository auditEventRepository;
@@ -44,7 +45,8 @@ public class UserFollowService {
 
     private void recordFollowEvent(Long followerId, Long followedId, EventAction action) {
         UUID id = UUID.randomUUID();
-        auditEventRepository.save(ActionEvent.builder()
+        auditEventRepository.save(
+            ActionEvent.builder()
                 .id(id)
                 .operationId(id)
                 .occurredAt(OffsetDateTime.now())
@@ -53,9 +55,11 @@ public class UserFollowService {
                 .actorUserId(followerId)
                 .audience(EventAudience.USER_ACTIVITY)
                 .outcome(EventOutcome.SUCCESS)
-                .details(JSONB.valueOf(mapper.writeValueAsString(
-                        Map.of("followedUserId", followedId))))
-                .build());
+                .details(
+                    JSONB.valueOf(mapper.writeValueAsString(Map.of("followedUserId", followedId)))
+                )
+                .build()
+        );
     }
 
     private User validateUsers(Long followerId, Long followedId) {

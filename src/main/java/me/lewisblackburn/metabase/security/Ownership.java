@@ -7,12 +7,15 @@ import org.springframework.stereotype.Component;
 
 @Component("ownership")
 public class Ownership {
+
     public boolean isOwner(Long userId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null
-                && authentication.isAuthenticated()
-                && !(authentication instanceof AnonymousAuthenticationToken)
-                && authentication.getPrincipal() instanceof UserPrincipal principal
-                && principal.id().equals(userId);
+        return (
+            authentication != null &&
+            authentication.isAuthenticated() &&
+            !(authentication instanceof AnonymousAuthenticationToken) &&
+            authentication.getPrincipal() instanceof UserPrincipal principal &&
+            principal.id().equals(userId)
+        );
     }
 }

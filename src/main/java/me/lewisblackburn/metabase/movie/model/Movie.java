@@ -5,10 +5,9 @@ import lombok.Builder;
 
 @Builder
 public record Movie(
-        Long id,
-        String title,
-        String overview,
-        LocalDate releaseDate,
-        Integer runtimeMinutes
-) {
-}
+    Long id,
+    String title,
+    String overview,
+    LocalDate releaseDate,
+    Integer runtimeMinutes
+) {}

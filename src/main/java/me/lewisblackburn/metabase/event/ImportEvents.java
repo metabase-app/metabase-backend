@@ -19,25 +19,59 @@ public class ImportEvents {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void completed(String source, String providerType, String externalId, Long entityId) {
-        record(source, providerType, externalId, entityId, EventAction.IMPORT_COMPLETED,
-                EventOutcome.SUCCESS, Map.of());
+        record(
+            source,
+            providerType,
+            externalId,
+            entityId,
+            EventAction.IMPORT_COMPLETED,
+            EventOutcome.SUCCESS,
+            Map.of()
+        );
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void failed(String source, String providerType, String externalId,
-            RuntimeException failure) {
+    public void failed(
+        String source,
+        String providerType,
+        String externalId,
+        RuntimeException failure
+    ) {
         // Arbitrary exception messages can contain credentials, URLs or raw provider payloads.
-        record(source, providerType, externalId, null, EventAction.IMPORT_FAILED,
-                EventOutcome.FAILURE, Map.of("errorType", failure.getClass().getSimpleName()));
+        record(
+            source,
+            providerType,
+            externalId,
+            null,
+            EventAction.IMPORT_FAILED,
+            EventOutcome.FAILURE,
+            Map.of("errorType", failure.getClass().getSimpleName())
+        );
     }
 
-    private void record(String source, String providerType, String externalId, Long entityId,
-            EventAction action, EventOutcome outcome, Map<String, String> error) {
+    private void record(
+        String source,
+        String providerType,
+        String externalId,
+        Long entityId,
+        EventAction action,
+        EventOutcome outcome,
+        Map<String, String> error
+    ) {
         UUID id = UUID.randomUUID();
-        var details = Map.of("source", source, "providerEntityType", providerType,
-                "providerEntityId", externalId, "error", error);
+        var details = Map.of(
+            "source",
+            source,
+            "providerEntityType",
+            providerType,
+            "providerEntityId",
+            externalId,
+            "error",
+            error
+        );
 
-        auditEventRepository.save(ActionEvent.builder()
+        auditEventRepository.save(
+            ActionEvent.builder()
                 .id(id)
                 .operationId(id)
                 .occurredAt(OffsetDateTime.now())
@@ -49,6 +83,7 @@ public class ImportEvents {
                 .outcome(outcome)
                 .entityId(entityId)
                 .details(JSONB.valueOf(mapper.writeValueAsString(details)))
-                .build());
+                .build()
+        );
     }
 }

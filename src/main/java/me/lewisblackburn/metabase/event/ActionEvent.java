@@ -3,25 +3,24 @@ package me.lewisblackburn.metabase.event;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.Builder;
 import org.jooq.JSONB;
 import org.springframework.util.Assert;
-import lombok.Builder;
 
 @Builder
 public record ActionEvent(
-        UUID id,
-        UUID operationId,
-        OffsetDateTime occurredAt,
-        EventAction action,
-        EventActorType actorType,
-        Long actorUserId,
-        String systemName,
-        EventAudience audience,
-        EventOutcome outcome,
-        Long entityId,
-        JSONB details
+    UUID id,
+    UUID operationId,
+    OffsetDateTime occurredAt,
+    EventAction action,
+    EventActorType actorType,
+    Long actorUserId,
+    String systemName,
+    EventAudience audience,
+    EventOutcome outcome,
+    Long entityId,
+    JSONB details
 ) {
-
     public ActionEvent {
         Objects.requireNonNull(id);
         Objects.requireNonNull(operationId);
@@ -33,10 +32,11 @@ public record ActionEvent(
         Objects.requireNonNull(details);
 
         Assert.isTrue(
-                actorType == EventActorType.USER
-                        ? actorUserId != null && actorUserId > 0 && systemName == null
-                        : actorUserId == null && systemName != null && !systemName.isBlank(),
-                "An event must identify either a user or a system actor");
+            actorType == EventActorType.USER
+                ? actorUserId != null && actorUserId > 0 && systemName == null
+                : actorUserId == null && systemName != null && !systemName.isBlank(),
+            "An event must identify either a user or a system actor"
+        );
         Assert.isTrue(entityId == null || entityId > 0, "Entity ID must be positive");
     }
 }

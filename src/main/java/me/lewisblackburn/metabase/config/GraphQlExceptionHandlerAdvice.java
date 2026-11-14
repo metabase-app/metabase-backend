@@ -3,16 +3,16 @@ package me.lewisblackburn.metabase.config;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
 import graphql.schema.DataFetchingEnvironment;
+import jakarta.validation.ConstraintViolationException;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import me.lewisblackburn.metabase.security.RateLimitExceededException;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.graphql.execution.ErrorType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.AuthenticationException;
-import jakarta.validation.ConstraintViolationException;
-import java.util.stream.Collectors;
-import java.util.Map;
-import me.lewisblackburn.metabase.security.RateLimitExceededException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -22,76 +22,127 @@ import org.springframework.web.client.RestClientResponseException;
 public class GraphQlExceptionHandlerAdvice {
 
     @GraphQlExceptionHandler
-    public GraphQLError handleRateLimit(RateLimitExceededException exception,
-            DataFetchingEnvironment environment) {
-        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.FORBIDDEN)
-                .message(exception.getMessage())
-                .extensions(Map.of("code", "RATE_LIMITED", "retryAfterSeconds",
-                        exception.getRetryAfterSeconds()))
-                .build();
-    }
-
-    @GraphQlExceptionHandler
-    public GraphQLError handleAuthenticationFailure(AuthenticationException exception,
-            DataFetchingEnvironment environment) {
-        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.UNAUTHORIZED)
-                .message("Invalid credentials").build();
-    }
-
-    @GraphQlExceptionHandler
-    public GraphQLError handleValidationFailure(ConstraintViolationException exception,
-            DataFetchingEnvironment environment) {
-        // Do not include rejected credential values in errors or logs.
-        String message = exception.getConstraintViolations().stream()
-                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
-                .sorted()
-                .collect(Collectors.joining("; "));
-        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.BAD_REQUEST)
-                .message(message).build();
-    }
-
-    @GraphQlExceptionHandler({AccessDeniedException.class,
-            AuthenticationCredentialsNotFoundException.class})
-    public GraphQLError handleAccessDenied(RuntimeException exception,
-            DataFetchingEnvironment environment) {
+    public GraphQLError handleRateLimit(
+        RateLimitExceededException exception,
+        DataFetchingEnvironment environment
+    ) {
         return GraphqlErrorBuilder.newError(environment)
-                .errorType(ErrorType.FORBIDDEN)
-                .message("You are not authorised to access this field")
-                .build();
+            .errorType(ErrorType.FORBIDDEN)
+            .message(exception.getMessage())
+            .extensions(
+                Map.of(
+                    "code",
+                    "RATE_LIMITED",
+                    "retryAfterSeconds",
+                    exception.getRetryAfterSeconds()
+                )
+            )
+            .build();
     }
 
     @GraphQlExceptionHandler
-    public GraphQLError handleInvalidInput(IllegalArgumentException exception,
-            DataFetchingEnvironment environment) {
-        log.warn("Invalid GraphQL input at path {}: {}",
-                environment.getExecutionStepInfo().getPath(), exception.getMessage(), exception);
-        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.BAD_REQUEST)
-                .message(exception.getMessage()).build();
+    public GraphQLError handleAuthenticationFailure(
+        AuthenticationException exception,
+        DataFetchingEnvironment environment
+    ) {
+        return GraphqlErrorBuilder.newError(environment)
+            .errorType(ErrorType.UNAUTHORIZED)
+            .message("Invalid credentials")
+            .build();
     }
 
     @GraphQlExceptionHandler
-    public GraphQLError handleExternalServiceFailure(RestClientException exception,
-            DataFetchingEnvironment environment) {
-        String detail = exception instanceof RestClientResponseException response
+    public GraphQLError handleValidationFailure(
+        ConstraintViolationException exception,
+        DataFetchingEnvironment environment
+    ) {
+        // Do not include rejected credential values in errors or logs.
+        String message = exception
+            .getConstraintViolations()
+            .stream()
+            .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+            .sorted()
+            .collect(Collectors.joining("; "));
+        return GraphqlErrorBuilder.newError(environment)
+            .errorType(ErrorType.BAD_REQUEST)
+            .message(message)
+            .build();
+    }
+
+    @GraphQlExceptionHandler({
+        AccessDeniedException.class,
+        AuthenticationCredentialsNotFoundException.class,
+    })
+    public GraphQLError handleAccessDenied(
+        RuntimeException exception,
+        DataFetchingEnvironment environment
+    ) {
+        return GraphqlErrorBuilder.newError(environment)
+            .errorType(ErrorType.FORBIDDEN)
+            .message("You are not authorised to access this field")
+            .build();
+    }
+
+    @GraphQlExceptionHandler
+    public GraphQLError handleInvalidInput(
+        IllegalArgumentException exception,
+        DataFetchingEnvironment environment
+    ) {
+        log.warn(
+            "Invalid GraphQL input at path {}: {}",
+            environment.getExecutionStepInfo().getPath(),
+            exception.getMessage(),
+            exception
+        );
+        return GraphqlErrorBuilder.newError(environment)
+            .errorType(ErrorType.BAD_REQUEST)
+            .message(exception.getMessage())
+            .build();
+    }
+
+    @GraphQlExceptionHandler
+    public GraphQLError handleExternalServiceFailure(
+        RestClientException exception,
+        DataFetchingEnvironment environment
+    ) {
+        String detail =
+            exception instanceof RestClientResponseException response
                 ? "HTTP status " + response.getStatusCode().value()
                 : exception.getClass().getSimpleName();
-        log.error("External service request failed at GraphQL path {} ({})",
-                environment.getExecutionStepInfo().getPath(), detail, exception);
-        if (exception instanceof RestClientResponseException response
-                && response.getStatusCode().value() == 404) {
-            return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.NOT_FOUND)
-                    .message("The external service could not find the requested resource").build();
+        log.error(
+            "External service request failed at GraphQL path {} ({})",
+            environment.getExecutionStepInfo().getPath(),
+            detail,
+            exception
+        );
+        if (
+            exception instanceof RestClientResponseException response &&
+            response.getStatusCode().value() == 404
+        ) {
+            return GraphqlErrorBuilder.newError(environment)
+                .errorType(ErrorType.NOT_FOUND)
+                .message("The external service could not find the requested resource")
+                .build();
         }
-        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.INTERNAL_ERROR)
-                .message("An external service request failed").build();
+        return GraphqlErrorBuilder.newError(environment)
+            .errorType(ErrorType.INTERNAL_ERROR)
+            .message("An external service request failed")
+            .build();
     }
 
     @GraphQlExceptionHandler
-    public GraphQLError handleUnexpectedFailure(Exception exception,
-            DataFetchingEnvironment environment) {
-        log.error("Unhandled GraphQL exception at path {}",
-                environment.getExecutionStepInfo().getPath(), exception);
-        return GraphqlErrorBuilder.newError(environment).errorType(ErrorType.INTERNAL_ERROR)
-                .message("An internal error occurred").build();
+    public GraphQLError handleUnexpectedFailure(
+        Exception exception,
+        DataFetchingEnvironment environment
+    ) {
+        log.error(
+            "Unhandled GraphQL exception at path {}",
+            environment.getExecutionStepInfo().getPath(),
+            exception
+        );
+        return GraphqlErrorBuilder.newError(environment)
+            .errorType(ErrorType.INTERNAL_ERROR)
+            .message("An internal error occurred")
+            .build();
     }
 }

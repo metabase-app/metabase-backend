@@ -3,17 +3,16 @@ package me.lewisblackburn.metabase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 import me.lewisblackburn.metabase.security.AuthRateLimiter;
 import me.lewisblackburn.metabase.security.RateLimitExceededException;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import io.github.bucket4j.distributed.proxy.ProxyManager;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -27,8 +26,9 @@ class RedisIntegrationTest {
 
     @Container
     @SuppressWarnings("resource")
-    static GenericContainer<?> redis =
-            new GenericContainer<>(DockerImageName.parse("redis:8-alpine")).withExposedPorts(6379);
+    static GenericContainer<?> redis = new GenericContainer<>(
+        DockerImageName.parse("redis:8-alpine")
+    ).withExposedPorts(6379);
 
     @DynamicPropertySource
     static void redisProperties(DynamicPropertyRegistry registry) {
@@ -49,11 +49,13 @@ class RedisIntegrationTest {
     void allowsAttemptsAgainAfterTheRefillInterval() {
         var shortLimit = new AuthRateLimiter(buckets, 1, 1);
         shortLimit.check("refill-test");
-        assertThatThrownBy(() -> shortLimit.check("refill-test"))
-                .isInstanceOf(RateLimitExceededException.class);
-        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(3))
-                .ignoreException(RateLimitExceededException.class)
-                .untilAsserted(() -> shortLimit.check("refill-test"));
+        assertThatThrownBy(() -> shortLimit.check("refill-test")).isInstanceOf(
+            RateLimitExceededException.class
+        );
+        org.awaitility.Awaitility.await()
+            .atMost(Duration.ofSeconds(3))
+            .ignoreException(RateLimitExceededException.class)
+            .untilAsserted(() -> shortLimit.check("refill-test"));
     }
 
     @Test
@@ -66,8 +68,9 @@ class RedisIntegrationTest {
         }
         assertThat(redisTemplate.getExpire(key)).isBetween(1L, 70L);
         redisTemplate.expire(key, Duration.ofSeconds(20));
-        assertThatThrownBy(() -> rateLimiter.check(ip))
-                .isInstanceOf(RateLimitExceededException.class);
+        assertThatThrownBy(() -> rateLimiter.check(ip)).isInstanceOf(
+            RateLimitExceededException.class
+        );
         assertThat(redisTemplate.getExpire(key)).isBetween(1L, 20L);
         redisTemplate.expire(key, Duration.ZERO);
         rateLimiter.check(ip);
@@ -79,16 +82,23 @@ class RedisIntegrationTest {
     void sharesAnAtomicLimitAcrossConcurrentCallers() {
         String ip = "concurrency-test";
         redisTemplate.delete("metabase:auth:rate-limit:" + ip);
-        var attempts = IntStream.range(0, 30).mapToObj(i -> CompletableFuture.supplyAsync(() -> {
-            try {
-                rateLimiter.check(ip);
-                return true;
-            } catch (RateLimitExceededException exception) {
-                return false;
-            }
-        })).toList();
-        long allowed = attempts.stream().map(CompletableFuture::join).filter(Boolean::booleanValue)
-                .count();
+        var attempts = IntStream.range(0, 30)
+            .mapToObj(i ->
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        rateLimiter.check(ip);
+                        return true;
+                    } catch (RateLimitExceededException exception) {
+                        return false;
+                    }
+                })
+            )
+            .toList();
+        long allowed = attempts
+            .stream()
+            .map(CompletableFuture::join)
+            .filter(Boolean::booleanValue)
+            .count();
         assertThat(allowed).isEqualTo(10);
     }
 

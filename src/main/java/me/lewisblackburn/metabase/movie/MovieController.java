@@ -35,20 +35,16 @@ public class MovieController {
     }
 
     @QueryMapping
-    public Movie movie(
-        @Argument Long id,
-        @ContextValue("http") ServletRequestAttributes http
-    ) {
+    public Movie movie(@Argument Long id, @ContextValue("http") ServletRequestAttributes http) {
         rateLimiter.check("movie", http.getRequest().getRemoteAddr());
         return movieRepository.find(id);
     }
 
     @BatchMapping(typeName = "Movie", field = "cast")
     public Map<Movie, List<CastMember>> cast(List<Movie> movies) {
-        Map<Long, List<CastMember>> castByMovie =
-            movieRepository.findCastByMovieIds(
-                movies.stream().map(Movie::id).toList()
-            );
+        Map<Long, List<CastMember>> castByMovie = movieRepository.findCastByMovieIds(
+            movies.stream().map(Movie::id).toList()
+        );
 
         return movies
             .stream()
@@ -62,10 +58,9 @@ public class MovieController {
 
     @BatchMapping(typeName = "Movie", field = "crew")
     public Map<Movie, List<CrewMember>> crew(List<Movie> movies) {
-        Map<Long, List<CrewMember>> crewByMovie =
-            movieRepository.findCrewByMovieIds(
-                movies.stream().map(Movie::id).toList()
-            );
+        Map<Long, List<CrewMember>> crewByMovie = movieRepository.findCrewByMovieIds(
+            movies.stream().map(Movie::id).toList()
+        );
 
         return movies
             .stream()

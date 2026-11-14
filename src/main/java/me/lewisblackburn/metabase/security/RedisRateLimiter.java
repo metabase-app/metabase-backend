@@ -1,12 +1,13 @@
 package me.lewisblackburn.metabase.security;
 
-import java.time.Duration;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class RedisRateLimiter {
+
     private final ProxyManager<String> buckets;
 
     public void check(String key, BucketConfiguration limit) {

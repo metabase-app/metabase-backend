@@ -23,17 +23,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest
 @Testcontainers
 @Transactional
 class DatabaseUserDetailsServiceIntegrationTest {
+
     @Container
     @SuppressWarnings("resource")
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
@@ -65,9 +66,9 @@ class DatabaseUserDetailsServiceIntegrationTest {
         String hash = passwordEncoder.encode("test-password");
         Long userId = insertUser("alice", hash, false);
         dsl.insertInto(USER_ROLES, USER_ROLES.USER_ID, USER_ROLES.ROLE)
-                .values(userId, "USER")
-                .values(userId, "ADMIN")
-                .execute();
+            .values(userId, "USER")
+            .values(userId, "ADMIN")
+            .execute();
 
         // When credentials are loaded using a differently cased login username.
         UserPrincipal principal = userDetailsService.loadUserByUsername("ALICE");
@@ -77,8 +78,9 @@ class DatabaseUserDetailsServiceIntegrationTest {
         assertThat(principal.id()).isEqualTo(userId);
         assertThat(principal.getName()).isEqualTo("alice");
         assertThat(principal.getPassword()).isEqualTo(hash);
-        assertThat(principal.getAuthorities()).extracting(GrantedAuthority::getAuthority)
-                .containsExactly("ROLE_ADMIN", "ROLE_USER");
+        assertThat(principal.getAuthorities())
+            .extracting(GrantedAuthority::getAuthority)
+            .containsExactly("ROLE_ADMIN", "ROLE_USER");
     }
 
     @Test
@@ -89,10 +91,16 @@ class DatabaseUserDetailsServiceIntegrationTest {
 
         // When these accounts or an unknown account are looked up for login.
         // Then the service gives the same generic failure without distinguishing account state.
-        for (String username : new String[] {"deleted_user", "no_password", "unknown", "", null}) {
+        for (String username : new String[] {
+            "deleted_user",
+            "no_password",
+            "unknown",
+            "",
+            null,
+        }) {
             assertThatThrownBy(() -> userDetailsService.loadUserByUsername(username))
-                    .isInstanceOf(UsernameNotFoundException.class)
-                    .hasMessage("Invalid credentials");
+                .isInstanceOf(UsernameNotFoundException.class)
+                .hasMessage("Invalid credentials");
         }
     }
 
@@ -106,7 +114,8 @@ class DatabaseUserDetailsServiceIntegrationTest {
 
         // When the correct password is authenticated.
         Authentication authentication = manager.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated("alice", "test-password"));
+            UsernamePasswordAuthenticationToken.unauthenticated("alice", "test-password")
+        );
 
         // Then sensitive credentials are erased and the ID-based ownership check still works.
         assertThat(authentication.isAuthenticated()).isTrue();
@@ -122,18 +131,21 @@ class DatabaseUserDetailsServiceIntegrationTest {
         // When login is attempted again, the stored hash remains available and wrong passwords
         // fail.
         assertThat(userDetailsService.loadUserByUsername("alice").getPassword()).isNotNull();
-        assertThatThrownBy(() -> manager.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated("alice", "wrong-password")))
-                .isInstanceOf(BadCredentialsException.class);
+        assertThatThrownBy(() ->
+            manager.authenticate(
+                UsernamePasswordAuthenticationToken.unauthenticated("alice", "wrong-password")
+            )
+        ).isInstanceOf(BadCredentialsException.class);
     }
 
     private Long insertUser(String username, String hash, boolean deleted) {
-        return dsl.insertInto(USERS)
-                .set(USERS.USERNAME, username)
-                .set(USERS.DISPLAY_NAME, username)
-                .set(USERS.PASSWORD_HASH, hash)
-                .set(USERS.DELETED_AT, deleted ? OffsetDateTime.now() : null)
-                .returning(USERS.ID)
-                .fetchOne(USERS.ID);
+        return dsl
+            .insertInto(USERS)
+            .set(USERS.USERNAME, username)
+            .set(USERS.DISPLAY_NAME, username)
+            .set(USERS.PASSWORD_HASH, hash)
+            .set(USERS.DELETED_AT, deleted ? OffsetDateTime.now() : null)
+            .returning(USERS.ID)
+            .fetchOne(USERS.ID);
     }
 }

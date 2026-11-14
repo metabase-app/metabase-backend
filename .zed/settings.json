@@ -1,0 +1,12 @@
+{
+  "prettier": {
+    "allowed": true,
+    "plugins": ["prettier-plugin-java"]
+  },
+  "languages": {
+    "Java": {
+      "formatter": "prettier",
+      "preferred_line_length": 100
+    }
+  }
+}

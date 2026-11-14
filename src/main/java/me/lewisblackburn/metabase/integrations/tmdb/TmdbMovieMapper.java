@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class TmdbMovieMapper implements MovieMapper<TmdbMovieDto> {
+
     @Override
     public MovieImportData map(TmdbMovieDto source) {
         if (source.title() == null || source.title().isBlank()) {
@@ -17,12 +18,12 @@ public class TmdbMovieMapper implements MovieMapper<TmdbMovieDto> {
         }
 
         return MovieImportData.builder()
-                .title(source.title())
-                .overview(TextUtils.blankToNull(source.overview()))
-                .originalTitle(TextUtils.blankToNull(source.originalTitle()))
-                .originalLanguageCode(TextUtils.blankToNull(source.originalLanguage()))
-                .releaseDate(DateUtils.parseOptionalLocalDate(source.releaseDate()))
-                .runtimeMinutes(ProviderRuntimes.normalizeRuntime(source.runtime()))
-                .build();
+            .title(source.title())
+            .overview(TextUtils.blankToNull(source.overview()))
+            .originalTitle(TextUtils.blankToNull(source.originalTitle()))
+            .originalLanguageCode(TextUtils.blankToNull(source.originalLanguage()))
+            .releaseDate(DateUtils.parseOptionalLocalDate(source.releaseDate()))
+            .runtimeMinutes(ProviderRuntimes.normalizeRuntime(source.runtime()))
+            .build();
     }
 }

@@ -1,0 +1,11 @@
+{
+    "private": true,
+    "scripts": {
+        "format": "prettier --write \"src/**/*.java\" \"*.md\" \"*.json\" \"*.yml\"",
+        "format:check": "prettier --check \"src/**/*.java\" \"*.md\" \"*.json\" \"*.yml\""
+    },
+    "devDependencies": {
+        "prettier": "3.10.1",
+        "prettier-plugin-java": "2.11.0"
+    }
+}
