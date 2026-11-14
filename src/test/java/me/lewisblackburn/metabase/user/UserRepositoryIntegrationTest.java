@@ -1,6 +1,5 @@
 package me.lewisblackburn.metabase.user;
 
-import static me.lewisblackburn.metabase.jooq.tables.AuditEvents.AUDIT_EVENTS;
 import static me.lewisblackburn.metabase.jooq.tables.UserFollows.USER_FOLLOWS;
 import static me.lewisblackburn.metabase.jooq.tables.UserRoles.USER_ROLES;
 import static me.lewisblackburn.metabase.jooq.tables.Users.USERS;
@@ -11,7 +10,6 @@ import java.util.List;
 import me.lewisblackburn.metabase.user.model.Role;
 import me.lewisblackburn.metabase.user.model.User;
 import org.jooq.DSLContext;
-import org.jooq.JSONB;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -65,20 +63,9 @@ class UserRepositoryIntegrationTest {
         assertThat(userRepository.findFollowing(alice, 0, 20))
             .extracting(User::id)
             .containsExactly(bob);
-        assertThat(
-            dsl
-                .select(AUDIT_EVENTS.ACTION, AUDIT_EVENTS.ACTOR_USER_ID, AUDIT_EVENTS.DETAILS)
-                .from(AUDIT_EVENTS)
-                .where(AUDIT_EVENTS.ACTOR_USER_ID.eq(alice))
-                .fetch()
-        )
-            .singleElement()
-            .satisfies(event -> {
-                assertThat(event.get(AUDIT_EVENTS.ACTION)).isEqualTo("USER_FOLLOWED");
-                assertThat(event.get(AUDIT_EVENTS.DETAILS)).isEqualTo(
-                    JSONB.valueOf("{\"followedUserId\":" + bob + "}")
-                );
-            });
+        assertThat(dsl.fetch("select operation from audit_log where actor_user_id = ?", alice))
+            .extracting(record -> record.get(0, String.class))
+            .containsExactly("INSERT");
 
         // When Alice unfollows Bob twice, only the first request removes the relationship.
         assertThat(followService.unfollow(alice, bob).id()).isEqualTo(bob);
@@ -86,13 +73,13 @@ class UserRepositoryIntegrationTest {
         assertThat(userRepository.findFollowing(alice, 0, 20)).isEmpty();
         assertThat(dsl.fetchCount(USER_FOLLOWS)).isEqualTo(2);
         assertThat(
-            dsl
-                .select(AUDIT_EVENTS.ACTION)
-                .from(AUDIT_EVENTS)
-                .where(AUDIT_EVENTS.ACTOR_USER_ID.eq(alice))
-                .orderBy(AUDIT_EVENTS.OCCURRED_AT)
-                .fetch(AUDIT_EVENTS.ACTION)
-        ).containsExactly("USER_FOLLOWED", "USER_UNFOLLOWED");
+            dsl.fetch(
+                "select operation from audit_log where actor_user_id = ? order by occurred_at",
+                alice
+            )
+        )
+            .extracting(record -> record.get(0, String.class))
+            .containsExactly("INSERT", "DELETE");
     }
 
     @Test

@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import me.lewisblackburn.metabase.datasource.DataSourceType;
 import me.lewisblackburn.metabase.entity.EntityType;
-import me.lewisblackburn.metabase.event.ImportEvents;
+import me.lewisblackburn.metabase.event.AuditContext;
 import me.lewisblackburn.metabase.movie.model.Movie;
 import me.lewisblackburn.metabase.movie.model.MovieImportData;
 import org.jooq.Condition;
@@ -24,7 +24,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
 
     private final DSLContext dsl;
     private final JooqMovieRepository movies;
-    private final ImportEvents importEvents;
+    private final AuditContext auditContext;
 
     @Override
     @Transactional
@@ -34,12 +34,15 @@ public class JooqMovieImportRepository implements MovieImportRepository {
         String externalId,
         MovieImportData data
     ) {
-        validate(sourceName, providerEntityType, externalId, data);
+        Assert.hasText(sourceName, "Source name must not be blank");
+        Assert.hasText(providerEntityType, "Provider entity type must not be blank");
+        Assert.hasText(externalId, "External ID must not be blank");
+        Assert.notNull(data, "Movie import data must not be null");
+        auditContext.setSystemAuditContext(sourceName);
         Long sourceId = saveDataSource(sourceName);
         OffsetDateTime now = OffsetDateTime.now();
         var mapping = providerMapping(sourceId, providerEntityType, externalId);
         Long entityId = findMappedEntity(mapping);
-
         if (entityId == null) {
             entityId = createMovieEntity(data);
             saveProviderMapping(sourceId, entityId, providerEntityType, externalId, now);
@@ -49,21 +52,7 @@ public class JooqMovieImportRepository implements MovieImportRepository {
         }
 
         upsertMovie(entityId, data);
-
-        importEvents.completed(sourceName, providerEntityType, externalId, entityId);
         return movies.find(entityId);
-    }
-
-    private void validate(
-        String sourceName,
-        String providerEntityType,
-        String externalId,
-        MovieImportData data
-    ) {
-        Assert.hasText(sourceName, "Source name must not be blank");
-        Assert.hasText(providerEntityType, "Provider entity type must not be blank");
-        Assert.hasText(externalId, "External movie ID must not be blank");
-        Assert.notNull(data, "Movie import data must not be null");
     }
 
     private Long saveDataSource(String sourceName) {

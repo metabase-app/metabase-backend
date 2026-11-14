@@ -233,10 +233,7 @@ class UserGraphQlTest {
             .id(eventId)
             .operationId(eventId)
             .occurredAt(at)
-            .action("USER_FOLLOWED")
             .actorUserId(1L)
-            .outcome("SUCCESS")
-            .details("{\"followedUserId\":2}")
             .build();
         given(auditRepository.findByActor(1L, 0, 1)).willReturn(List.of(event));
 
@@ -245,7 +242,7 @@ class UserGraphQlTest {
             .document(
                 """
                 { userLogs(limit: 1, userId: "1") {
-                    id action actorUserId details
+                    id actorUserId
                   }
                   user(id: "1") { logs(limit: 1) {
                     id action
@@ -257,7 +254,6 @@ class UserGraphQlTest {
 
         // Then both fields expose the same event.
         response.path("userLogs[0].id").entity(String.class).isEqualTo(eventId.toString());
-        response.path("userLogs[0].action").entity(String.class).isEqualTo("USER_FOLLOWED");
         response.path("userLogs[0].actorUserId").entity(String.class).isEqualTo("1");
         response.path("user.logs[0].id").entity(String.class).isEqualTo(eventId.toString());
 

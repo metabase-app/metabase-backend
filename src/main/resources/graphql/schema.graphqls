@@ -19,6 +19,8 @@ type Mutation {
   login(input: LoginInput!): AuthPayload!
   logout: Boolean!
   importMovie(provider: MovieProvider!, externalId: ID!): Movie!
+  favourite(entityId: ID!): Boolean!
+  unfavourite(entityId: ID!): Boolean!
   followUser(userId: ID!): User!
   unfollowUser(userId: ID!): User!
 }
@@ -86,9 +88,11 @@ type AuditEvent {
   id: ID!
   operationId: ID!
   occurredAt: DateTime!
-  action: String!
   actorUserId: ID!
-  outcome: String!
   entityId: ID
-  details: String!
+  tableName: String
+  operation: String
+  rowKey: String
+  beforeData: String
+  afterData: String
 }
